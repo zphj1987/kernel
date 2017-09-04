@@ -8931,6 +8931,13 @@ L:	linux-fbdev@vger.kernel.org
 S:	Maintained
 F:	drivers/video/fbdev/aty/aty128fb.c
 
+RAINSHADOW-CEC DRIVER
+M:	Hans Verkuil <hverkuil@xs4all.nl>
+L:	linux-media@vger.kernel.org
+T:	git git://linuxtv.org/media_tree.git
+S:	Maintained
+F:	drivers/media/usb/rainshadow-cec/*
+
 RALINK RT2X00 WIRELESS LAN DRIVER
 P:	rt2x00 project
 M:	Stanislaw Gruszka <sgruszka@redhat.com>
