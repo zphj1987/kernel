@@ -32,6 +32,7 @@
 
 #include "xhci.h"
 #include "xhci-trace.h"
+#include "xhci-debugfs.h"
 
 #define DRIVER_AUTHOR "Sarah Sharp"
 #define DRIVER_DESC "'eXtensible' Host Controller (xHC) Driver"
@@ -657,6 +658,9 @@ int xhci_run(struct usb_hcd *hcd)
 	}
 	xhci_dbg_trace(xhci, trace_xhci_dbg_init,
 			"Finished xhci_run for USB2 roothub");
+
+	xhci_debugfs_init(xhci);
+
 	return 0;
 }
 EXPORT_SYMBOL_GPL(xhci_run);
@@ -717,6 +721,7 @@ void xhci_stop(struct usb_hcd *hcd)
 
 	xhci_dbg_trace(xhci, trace_xhci_dbg_init, "cleaning up memory");
 	xhci_mem_cleanup(xhci);
+	xhci_debugfs_exit(xhci);
 	xhci_dbg_trace(xhci, trace_xhci_dbg_init,
 			"xhci_stop completed - status = %x",
 			readl(&xhci->op_regs->status));
@@ -1059,6 +1064,7 @@ int xhci_resume(struct xhci_hcd *xhci, bool hibernated)
 
 		xhci_dbg(xhci, "cleaning up memory\n");
 		xhci_mem_cleanup(xhci);
+		xhci_debugfs_exit(xhci);
 		xhci_dbg(xhci, "xhci_stop completed - status = %x\n",
 			    readl(&xhci->op_regs->status));
 
@@ -1653,6 +1659,8 @@ int xhci_drop_endpoint(struct usb_hcd *hcd, struct usb_device *udev,
 	ctrl_ctx->add_flags &= cpu_to_le32(~drop_flag);
 	new_add_flags = le32_to_cpu(ctrl_ctx->add_flags);
 
+	xhci_debugfs_remove_endpoint(xhci, xhci->devs[udev->slot_id], ep_index);
+
 	xhci_endpoint_zero(xhci, xhci->devs[udev->slot_id], ep);
 
 	xhci_dbg(xhci, "drop ep 0x%x, slot id %d, new drop flags = %#x, new add flags = %#x\n",
@@ -1763,6 +1771,8 @@ int xhci_add_endpoint(struct usb_hcd *hcd, struct usb_device *udev,
 
 	/* Store the usb_device pointer for later use */
 	ep->hcpriv = udev;
+
+	xhci_debugfs_create_endpoint(xhci, virt_dev, ep_index);
 
 	xhci_dbg(xhci, "add ep 0x%x, slot id %d, new drop flags = %#x, new add flags = %#x\n",
 			(unsigned int) ep->desc.bEndpointAddress,
@@ -2808,6 +2818,7 @@ void xhci_reset_bandwidth(struct usb_hcd *hcd, struct usb_device *udev)
 	/* Free any rings allocated for added endpoints */
 	for (i = 0; i < 31; ++i) {
 		if (virt_dev->eps[i].new_ring) {
+			xhci_debugfs_remove_endpoint(xhci, virt_dev, i);
 			xhci_ring_free(xhci, virt_dev->eps[i].new_ring);
 			virt_dev->eps[i].new_ring = NULL;
 		}
@@ -3520,6 +3531,7 @@ int xhci_discover_or_reset_device(struct usb_hcd *hcd, struct usb_device *udev)
 		}
 
 		if (ep->ring) {
+			xhci_debugfs_remove_endpoint(xhci, virt_dev, i);
 			xhci_free_or_cache_endpoint_ring(xhci, virt_dev, i);
 			last_freed_endpoint = i;
 		}
@@ -3555,6 +3567,8 @@ void xhci_free_dev(struct usb_hcd *hcd, struct usb_device *udev)
 	u32 state;
 	int i, ret;
 	struct xhci_command *command;
+
+	xhci_debugfs_remove_slot(xhci, udev->slot_id);
 
 	command = xhci_alloc_command(xhci, false, false, GFP_KERNEL);
 	if (!command)
@@ -3712,6 +3726,8 @@ int xhci_alloc_dev(struct usb_hcd *hcd, struct usb_device *udev)
 	trace_xhci_alloc_dev(slot_ctx);
 
 	udev->slot_id = slot_id;
+
+	xhci_debugfs_create_slot(xhci, slot_id);
 
 #ifndef CONFIG_USB_DEFAULT_PERSIST
 	/*
@@ -5014,6 +5030,8 @@ static int __init xhci_hcd_init(void)
 	if (usb_disabled())
 		return -ENODEV;
 
+	xhci_debugfs_create_root();
+
 	return 0;
 }
 
@@ -5021,7 +5039,10 @@ static int __init xhci_hcd_init(void)
  * If an init function is provided, an exit function must also be provided
  * to allow module unload.
  */
-static void __exit xhci_hcd_fini(void) { }
+static void __exit xhci_hcd_fini(void)
+{
+	xhci_debugfs_remove_root();
+}
 
 module_init(xhci_hcd_init);
 module_exit(xhci_hcd_fini);
