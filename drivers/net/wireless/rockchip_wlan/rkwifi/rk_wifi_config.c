@@ -92,6 +92,16 @@ if (chip == WIFI_AP6354) {
         sprintf(nvram, "%s%s", ANDROID_FW_PATH, "nvram_ap6354.txt");
 }
 
+if (chip == WIFI_AP6356) {
+    sprintf(fw, "%s%s", ANDROID_FW_PATH, "fw_bcm4356a2_ag.bin");
+        sprintf(nvram, "%s%s", ANDROID_FW_PATH, "nvram_ap6356s.txt");
+}
+
+if (chip == WIFI_AP6359) {
+    sprintf(fw, "%s%s", ANDROID_FW_PATH, "fw_bcm4359c0_ag.bin");
+        sprintf(nvram, "%s%s", ANDROID_FW_PATH, "nvram_ap6359sa.txt");
+}
+
 if (chip == WIFI_AP6476) {
     sprintf(fw, "%s%s", ANDROID_FW_PATH, "fw_RK901.bin");
 	sprintf(nvram, "%s%s", ANDROID_FW_PATH, "nvram_AP6476.txt");
