@@ -179,6 +179,16 @@ struct vop_plane_state {
 	int global_alpha;
 	int blend_mode;
 	unsigned long offset;
+	int pdaf_data_type;
+};
+
+struct rockchip_mcu_timing {
+	int mcu_pix_total;
+	int mcu_cs_pst;
+	int mcu_cs_pend;
+	int mcu_rw_pst;
+	int mcu_rw_pend;
+	int mcu_hold_mode;
 };
 
 struct vop_win {
@@ -272,6 +282,8 @@ struct vop {
 	struct reset_control *dclk_rst;
 
 	struct rockchip_dclk_pll *pll;
+
+	struct rockchip_mcu_timing mcu_timing;
 
 	struct vop_win win[];
 };
@@ -549,6 +561,9 @@ static enum vop_data_format vop_convert_format(uint32_t format)
 	case DRM_FORMAT_NV24:
 	case DRM_FORMAT_NV24_10:
 		return VOP_FMT_YUV444SP;
+	case DRM_FORMAT_RGB332:
+	case DRM_FORMAT_BGR233:
+		return VOP_RAW8;
 	default:
 		DRM_ERROR("unsupport format[%08x]\n", format);
 		return -EINVAL;
@@ -1629,7 +1644,7 @@ static void vop_plane_atomic_update(struct drm_plane *plane,
 	struct drm_framebuffer *fb = state->fb;
 	unsigned int actual_w, actual_h;
 	unsigned int dsp_stx, dsp_sty;
-	uint32_t act_info, dsp_info, dsp_st;
+	uint32_t act_info, dsp_info, dsp_st, ex_vact_st, ex_vact_end;
 	struct drm_rect *src = &vop_plane_state->src;
 	struct drm_rect *dest = &vop_plane_state->dest;
 	const uint32_t *y2r_table = vop_plane_state->y2r_table;
@@ -1684,21 +1699,38 @@ static void vop_plane_atomic_update(struct drm_plane *plane,
 	dsp_stx = dest->x1 + mode->crtc_htotal - mode->crtc_hsync_start;
 	dsp_sty = dest->y1 + mode->crtc_vtotal - mode->crtc_vsync_start;
 	dsp_st = dsp_sty << 16 | (dsp_stx & 0xffff);
+	vop = to_vop(state->crtc);
+
+	if (VOP_WIN_SUPPORT(vop, win, vact_st_end_info)) {
+		if (win->feature & WIN_FEATURE_PDAF_AFTER_VBLANK)
+			ex_vact_st = dest->y1 + mode->crtc_vtotal -
+				mode->crtc_vsync_start + mode->crtc_vdisplay;
+		else
+			ex_vact_st = dest->y1 + mode->crtc_vsync_end -
+				mode->crtc_vsync_start;
+		ex_vact_end = ex_vact_st + drm_rect_height(dest);
+		VOP_WIN_SET(vop, win, vact_st_end_info,
+			    ex_vact_st << 16 | ex_vact_end);
+		VOP_WIN_SET(vop, win, data_type,
+			    vop_plane_state->pdaf_data_type);
+		/* todo: default raw8 format for wc and vir */
+		VOP_WIN_SET(vop, win, ex_wc, actual_w);
+	}
 
 	ymirror = state->rotation & BIT(DRM_REFLECT_Y) ||
 		  (rockchip_fb_is_logo(fb) && vop_plane_state->logo_ymirror);
 	xmirror = !!(state->rotation & BIT(DRM_REFLECT_X));
 
-	vop = to_vop(state->crtc);
 	s = to_rockchip_crtc_state(crtc->state);
 
 	spin_lock(&vop->reg_lock);
-
 	VOP_WIN_SET(vop, win, xmirror, xmirror);
 	VOP_WIN_SET(vop, win, ymirror, ymirror);
 	VOP_WIN_SET(vop, win, format, vop_plane_state->format);
 	VOP_WIN_SET(vop, win, yrgb_vir, fb->pitches[0] >> 2);
 	VOP_WIN_SET(vop, win, yrgb_mst, vop_plane_state->yrgb_mst);
+	VOP_WIN_SET(vop, win, yrgb_mst1, vop_plane_state->yrgb_mst);
+
 	if (is_yuv_support(fb->pixel_format)) {
 		VOP_WIN_SET(vop, win, uv_vir, fb->pitches[1] >> 2);
 		VOP_WIN_SET(vop, win, uv_mst, vop_plane_state->uv_mst);
@@ -1896,6 +1928,11 @@ static int vop_atomic_plane_set_property(struct drm_plane *plane,
 		return 0;
 	}
 
+	if (property == private->pdaf_data_type) {
+		plane_state->pdaf_data_type = val;
+		return 0;
+	}
+
 	DRM_ERROR("failed to set vop plane property\n");
 	return -EINVAL;
 }
@@ -1936,6 +1973,11 @@ static int vop_atomic_plane_get_property(struct drm_plane *plane,
 
 	if (property == private->blend_mode_prop) {
 		*val = plane_state->blend_mode;
+		return 0;
+	}
+
+	if (property == private->pdaf_data_type) {
+		*val = plane_state->pdaf_data_type;
 		return 0;
 	}
 
@@ -2303,7 +2345,8 @@ static size_t vop_plane_line_bandwidth(struct drm_plane_state *pstate)
 	int vskiplines = scl_get_vskiplines(src_height, dest_height);
 	size_t bandwidth;
 
-	if (!src_width || !src_height || !dest_width || !dest_height)
+	if (src_width <= 0 || src_height <= 0 || dest_width <= 0 ||
+	    dest_height <= 0)
 		return 0;
 
 	bandwidth = src_width * bpp / 8;
@@ -2411,6 +2454,36 @@ static void vop_crtc_close(struct drm_crtc *crtc)
 	mutex_unlock(&vop->vop_lock);
 }
 
+static void vop_crtc_send_mcu_cmd(struct drm_crtc *crtc,  u32 type, u32 value)
+{
+	struct vop *vop = NULL;
+
+	if (!crtc)
+		return;
+
+	vop = to_vop(crtc);
+	mutex_lock(&vop->vop_lock);
+	if (vop && vop->is_enabled) {
+		switch (type) {
+		case MCU_WRCMD:
+			VOP_CTRL_SET(vop, mcu_rs, 0);
+			VOP_CTRL_SET(vop, mcu_rw_bypass_port, value);
+			VOP_CTRL_SET(vop, mcu_rs, 1);
+			break;
+		case MCU_WRDATA:
+			VOP_CTRL_SET(vop, mcu_rs, 1);
+			VOP_CTRL_SET(vop, mcu_rw_bypass_port, value);
+			break;
+		case MCU_SETBYPASS:
+			VOP_CTRL_SET(vop, mcu_bypass, value ? 1 : 0);
+			break;
+		default:
+			break;
+		}
+	}
+	mutex_unlock(&vop->vop_lock);
+}
+
 static const struct rockchip_crtc_funcs private_crtc_funcs = {
 	.loader_protect = vop_crtc_loader_protect,
 	.enable_vblank = vop_crtc_enable_vblank,
@@ -2422,6 +2495,7 @@ static const struct rockchip_crtc_funcs private_crtc_funcs = {
 	.mode_valid = vop_crtc_mode_valid,
 	.bandwidth = vop_crtc_bandwidth,
 	.crtc_close = vop_crtc_close,
+	.crtc_send_mcu_cmd = vop_crtc_send_mcu_cmd,
 };
 
 static bool vop_crtc_mode_fixup(struct drm_crtc *crtc,
@@ -2553,6 +2627,21 @@ static bool vop_crtc_mode_update(struct drm_crtc *crtc)
 		return true;
 
 	return false;
+}
+
+static void vop_mcu_mode(struct drm_crtc *crtc)
+{
+	struct vop *vop = to_vop(crtc);
+
+	VOP_CTRL_SET(vop, mcu_clk_sel, 1);
+	VOP_CTRL_SET(vop, mcu_type, 1);
+
+	VOP_CTRL_SET(vop, mcu_hold_mode, 1);
+	VOP_CTRL_SET(vop, mcu_pix_total, vop->mcu_timing.mcu_pix_total);
+	VOP_CTRL_SET(vop, mcu_cs_pst, vop->mcu_timing.mcu_cs_pst);
+	VOP_CTRL_SET(vop, mcu_cs_pend, vop->mcu_timing.mcu_cs_pend);
+	VOP_CTRL_SET(vop, mcu_rw_pst, vop->mcu_timing.mcu_rw_pst);
+	VOP_CTRL_SET(vop, mcu_rw_pend, vop->mcu_timing.mcu_rw_pend);
 }
 
 static void vop_crtc_enable(struct drm_crtc *crtc)
@@ -2716,6 +2805,9 @@ static void vop_crtc_enable(struct drm_crtc *crtc)
 	VOP_CTRL_SET(vop, win_csc_mode_sel, 1);
 
 	clk_set_rate(vop->dclk, adjusted_mode->crtc_clock * 1000);
+
+	if (vop->mcu_timing.mcu_pix_total)
+		vop_mcu_mode(crtc);
 
 	vop_cfg_done(vop);
 
@@ -3249,6 +3341,8 @@ static void vop_tv_config_update(struct drm_crtc *crtc,
 	VOP_CTRL_SET(vop, bcsh_sin_hue, sin_hue);
 	VOP_CTRL_SET(vop, bcsh_cos_hue, cos_hue);
 	VOP_CTRL_SET(vop, bcsh_out_mode, BCSH_OUT_MODE_NORMAL_VIDEO);
+	if (VOP_MAJOR(vop->version) == 3 && VOP_MINOR(vop->version) == 0)
+		VOP_CTRL_SET(vop, auto_gate_en, 0);
 	VOP_CTRL_SET(vop, bcsh_en, s->bcsh_en);
 }
 
@@ -3316,6 +3410,32 @@ static void vop_wait_for_irq_handler(struct vop *vop)
 		DRM_DEV_ERROR(vop->dev, "VOP vblank IRQ stuck for 10 ms\n");
 
 	synchronize_irq(vop->irq);
+}
+
+static int vop_set_work_mode(struct vop *vop, enum vop_pdaf_mode mode)
+{
+	switch (mode) {
+	case VOP_HOLD_MODE:
+		VOP_CTRL_SET(vop, work_mode, 0x1);
+		break;
+	case VOP_BACKGROUND_MODE:
+		VOP_CTRL_SET(vop, dsp_background, 0xff);
+		VOP_CTRL_SET(vop, work_mode, 0x0);
+		break;
+	case VOP_NORMAL_MODE:
+		VOP_CTRL_SET(vop, work_mode, 0);
+		break;
+	case VOP_BYPASS_MODE:
+		VOP_CTRL_SET(vop, work_mode, 0x5);
+		break;
+	case VOP_ONEFRAME_MODE:
+		VOP_CTRL_SET(vop, work_mode, 0x1);
+		break;
+	default:
+		break;
+	}
+
+	return 0;
 }
 
 static void vop_crtc_atomic_flush(struct drm_crtc *crtc,
@@ -3387,6 +3507,18 @@ static void vop_crtc_atomic_flush(struct drm_crtc *crtc,
 
 	vop_update_cabc(crtc, old_crtc_state);
 	vop_update_hdr(crtc, old_crtc_state);
+	if (VOP_CTRL_SUPPORT(vop, pdaf_type)) {
+		vop_set_work_mode(vop, s->pdaf_work_mode);
+		if (s->pdaf_type) {
+			VOP_CTRL_SET(vop, pdaf_type, s->pdaf_type);
+			VOP_CTRL_SET(vop, pdaf_en, 1);
+		} else {
+			VOP_CTRL_SET(vop, pdaf_en, 0);
+		}
+
+		if (s->pdaf_work_mode == VOP_HOLD_MODE)
+			VOP_CTRL_SET(vop, frame_st, 1);
+	}
 
 	spin_lock_irqsave(&vop->irq_lock, flags);
 	vop->pre_overlay = s->hdr.pre_overlay;
@@ -3403,6 +3535,8 @@ static void vop_crtc_atomic_flush(struct drm_crtc *crtc,
 	} else {
 		VOP_CTRL_SET(vop, reg_done_frm, 0);
 	}
+	if (vop->mcu_timing.mcu_pix_total)
+		VOP_CTRL_SET(vop, mcu_hold_mode, 0);
 
 	vop->mode_update = false;
 	spin_unlock_irqrestore(&vop->irq_lock, flags);
@@ -3477,6 +3611,8 @@ static void vop_crtc_reset(struct drm_crtc *crtc)
 	s->right_margin = 100;
 	s->top_margin = 100;
 	s->bottom_margin = 100;
+	s->pdaf_work_mode = VOP_NORMAL_MODE;
+	s->pdaf_type = VOP_PDAF_TYPE_VBLANK;
 }
 
 static struct drm_crtc_state *vop_crtc_duplicate_state(struct drm_crtc *crtc)
@@ -3567,6 +3703,16 @@ static int vop_crtc_atomic_get_property(struct drm_crtc *crtc,
 		return 0;
 	}
 
+	if (property == private->pdaf_type) {
+		*val = s->pdaf_type;
+		return 0;
+	}
+
+	if (property == private->work_mode) {
+		*val = s->pdaf_work_mode;
+		return 0;
+	}
+
 	DRM_ERROR("failed to get vop crtc property\n");
 	return -EINVAL;
 }
@@ -3651,6 +3797,16 @@ static int vop_crtc_atomic_set_property(struct drm_crtc *crtc,
 								val,
 								size,
 								&replaced);
+	}
+
+	if (property == private->pdaf_type) {
+		s->pdaf_type = val;
+		return 0;
+	}
+
+	if (property == private->work_mode) {
+		s->pdaf_work_mode = val;
+		return 0;
 	}
 
 	DRM_ERROR("failed to set vop crtc property\n");
@@ -3851,6 +4007,8 @@ static int vop_plane_init(struct vop *vop, struct vop_win *win,
 		feature |= BIT(ROCKCHIP_DRM_PLANE_FEATURE_SDR2HDR);
 	if (win->feature & WIN_FEATURE_AFBDC)
 		feature |= BIT(ROCKCHIP_DRM_PLANE_FEATURE_AFBDC);
+	if (win->feature & WIN_FEATURE_PDAF_AFTER_VBLANK)
+		feature |= BIT(ROCKCHIP_DRM_PLANE_FEATURE_PDAF_POS);
 
 	drm_object_attach_property(&win->base.base, vop->plane_feature_prop,
 				   feature);
@@ -3862,6 +4020,10 @@ static int vop_plane_init(struct vop *vop, struct vop_win *win,
 					   private->global_alpha_prop, 0xff);
 	drm_object_attach_property(&win->base.base,
 				   private->blend_mode_prop, 0);
+
+	if (VOP_WIN_SUPPORT(vop, win, data_type))
+		drm_object_attach_property(&win->base.base,
+					   private->pdaf_data_type, 0x2a);
 
 	return 0;
 }
@@ -4022,6 +4184,11 @@ static int vop_create_crtc(struct vop *vop)
 		feature |= BIT(ROCKCHIP_DRM_CRTC_FEATURE_AFBDC);
 	drm_object_attach_property(&crtc->base, vop->feature_prop,
 				   feature);
+	if (VOP_CTRL_SUPPORT(vop, pdaf_type)) {
+		drm_object_attach_property(&crtc->base, private->pdaf_type, 0);
+		drm_object_attach_property(&crtc->base, private->work_mode, VOP_NORMAL_MODE);
+	}
+
 	if (vop->lut_regs) {
 		u16 *r_base, *g_base, *b_base;
 		u32 lut_len = vop->lut_len;
@@ -4110,6 +4277,7 @@ static int vop_win_init(struct vop *vop)
 		{ ROCKCHIP_DRM_PLANE_FEATURE_HDR2SDR, "hdr2sdr" },
 		{ ROCKCHIP_DRM_PLANE_FEATURE_SDR2HDR, "sdr2hdr" },
 		{ ROCKCHIP_DRM_PLANE_FEATURE_AFBDC, "afbdc" },
+		{ ROCKCHIP_DRM_PLANE_FEATURE_PDAF_POS, "pdaf_pos" },
 	};
 	static const struct drm_prop_enum_list crtc_props[] = {
 		{ ROCKCHIP_DRM_CRTC_FEATURE_AFBDC, "afbdc" },
@@ -4151,8 +4319,6 @@ static int vop_win_init(struct vop *vop)
 		}
 	}
 
-	vop->num_wins = num_wins;
-
 	prop = drm_property_create_range(vop->drm_dev, DRM_MODE_PROP_ATOMIC,
 					 "ZPOS", 0, vop->data->win_size);
 	if (!prop) {
@@ -4168,7 +4334,8 @@ static int vop_win_init(struct vop *vop)
 				BIT(ROCKCHIP_DRM_PLANE_FEATURE_ALPHA) |
 				BIT(ROCKCHIP_DRM_PLANE_FEATURE_HDR2SDR) |
 				BIT(ROCKCHIP_DRM_PLANE_FEATURE_SDR2HDR) |
-				BIT(ROCKCHIP_DRM_PLANE_FEATURE_AFBDC));
+				BIT(ROCKCHIP_DRM_PLANE_FEATURE_AFBDC) |
+				BIT(ROCKCHIP_DRM_PLANE_FEATURE_PDAF_POS));
 	if (!vop->plane_feature_prop) {
 		DRM_ERROR("failed to create feature property\n");
 		return -EINVAL;
@@ -4271,6 +4438,7 @@ static int vop_bind(struct device *dev, struct device *master, void *data)
 	size_t alloc_size;
 	int ret, irq, i;
 	int num_wins = 0;
+	struct device_node *mcu = NULL;
 
 	vop_data = of_device_get_match_data(dev);
 	if (!vop_data)
@@ -4278,6 +4446,9 @@ static int vop_bind(struct device *dev, struct device *master, void *data)
 
 	for (i = 0; i < vop_data->win_size; i++) {
 		const struct vop_win_data *win_data = &vop_data->win[i];
+
+		if (!win_data->phy)
+			continue;
 
 		num_wins += win_data->area_size + 1;
 	}
@@ -4314,34 +4485,31 @@ static int vop_bind(struct device *dev, struct device *master, void *data)
 		return -ENOMEM;
 
 	res = platform_get_resource_byname(pdev, IORESOURCE_MEM, "gamma_lut");
-	vop->lut_regs = devm_ioremap_resource(dev, res);
-	if (IS_ERR(vop->lut_regs)) {
-		dev_warn(vop->dev, "failed to get vop lut registers\n");
-		vop->lut_regs = NULL;
-	}
-	if (vop->lut_regs) {
+	if (res) {
 		vop->lut_len = resource_size(res) / sizeof(*vop->lut);
 		if (vop->lut_len != 256 && vop->lut_len != 1024) {
 			dev_err(vop->dev, "unsupport lut sizes %d\n",
 				vop->lut_len);
 			return -EINVAL;
 		}
+
+		vop->lut_regs = devm_ioremap_resource(dev, res);
+		if (IS_ERR(vop->lut_regs))
+			return PTR_ERR(vop->lut_regs);
 	}
 
 	res = platform_get_resource_byname(pdev, IORESOURCE_MEM, "cabc_lut");
-	vop->cabc_lut_regs = devm_ioremap_resource(dev, res);
-	if (IS_ERR(vop->cabc_lut_regs)) {
-		dev_warn(vop->dev, "failed to get vop cabc lut registers\n");
-		vop->cabc_lut_regs = NULL;
-	}
-
-	if (vop->cabc_lut_regs) {
+	if (res) {
 		vop->cabc_lut_len = resource_size(res) >> 2;
 		if (vop->cabc_lut_len != 128) {
 			dev_err(vop->dev, "unsupport cabc lut sizes %d\n",
 				vop->cabc_lut_len);
 			return -EINVAL;
 		}
+
+		vop->cabc_lut_regs = devm_ioremap_resource(dev, res);
+		if (IS_ERR(vop->cabc_lut_regs))
+			return PTR_ERR(vop->cabc_lut_regs);
 	}
 
 	vop->grf = syscon_regmap_lookup_by_phandle(dev->of_node,
@@ -4404,6 +4572,27 @@ static int vop_bind(struct device *dev, struct device *master, void *data)
 
 	of_rockchip_drm_sub_backlight_register(dev, &vop->crtc,
 					       &rockchip_sub_backlight_ops);
+
+	mcu = of_get_child_by_name(dev->of_node, "mcu-timing");
+	if (!mcu) {
+		dev_dbg(dev, "no mcu-timing node found in %s\n",
+			dev->of_node->full_name);
+	} else {
+		u32 val;
+
+		if (!of_property_read_u32(mcu, "mcu-pix-total", &val))
+			vop->mcu_timing.mcu_pix_total = val;
+		if (!of_property_read_u32(mcu, "mcu-cs-pst", &val))
+			vop->mcu_timing.mcu_cs_pst = val;
+		if (!of_property_read_u32(mcu, "mcu-cs-pend", &val))
+			vop->mcu_timing.mcu_cs_pend = val;
+		if (!of_property_read_u32(mcu, "mcu-rw-pst", &val))
+			vop->mcu_timing.mcu_rw_pst = val;
+		if (!of_property_read_u32(mcu, "mcu-rw-pend", &val))
+			vop->mcu_timing.mcu_rw_pend = val;
+		if (!of_property_read_u32(mcu, "mcu-hold-mode", &val))
+			vop->mcu_timing.mcu_hold_mode = val;
+	}
 
 	return 0;
 }
