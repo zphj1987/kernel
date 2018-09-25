@@ -1683,6 +1683,7 @@ u8 SetHwReg8723DS(PADAPTER padapter, u8 variable, u8 *val)
 		} else if (enable == _FALSE) {
 			RTW_INFO("%s: keep WLAN ctrl\n", __func__);
 		}
+		// 0x66[4,8]=0
 		/*0x66 bit4*/
 		value = rtw_read8(padapter, REG_PAD_CTRL_1 + 2);
 		if (enable && (value & BIT(4))) {
