@@ -348,10 +348,11 @@ static int imx219_g_VTS(struct imx_camera_module *cam_mod, u32 *vts)
 		goto err;
 
 	*vts = (msb << 8) | lsb;
-
+	cam_mod->vts_cur = *vts;
 	return 0;
 err:
-	imx_camera_module_pr_err(cam_mod, "failed with error (%d)\n", ret);
+	imx_camera_module_pr_err(cam_mod,
+			"failed with error (%d)\n", ret);
 	return ret;
 }
 
@@ -400,10 +401,8 @@ static int imx219_write_aec(struct imx_camera_module *cam_mod)
 	if ((cam_mod->state == IMX_CAMERA_MODULE_SW_STANDBY) || (cam_mod->state == IMX_CAMERA_MODULE_STREAMING)) {
 		u32 a_gain = cam_mod->exp_config.gain;
 		u32 exp_time = cam_mod->exp_config.exp_time;
-
 		a_gain = a_gain * cam_mod->exp_config.gain_percent / 100;
 
-		mutex_lock(&cam_mod->lock);
 		if (!IS_ERR_VALUE(ret) && cam_mod->auto_adjust_fps)
 			ret = imx219_auto_adjust_fps(cam_mod, cam_mod->exp_config.exp_time);
 
@@ -415,9 +414,6 @@ static int imx219_write_aec(struct imx_camera_module *cam_mod)
 		ret = imx_camera_module_write_reg(cam_mod, IMX219_AEC_PK_EXPO_HIGH_REG, IMX219_FETCH_HIGH_BYTE_EXP(exp_time));
 		ret |= imx_camera_module_write_reg(cam_mod, IMX219_AEC_PK_EXPO_LOW_REG, IMX219_FETCH_LOW_BYTE_EXP(exp_time));
 
-		//if (!cam_mod->auto_adjust_fps)
-		//	ret |= imx219_set_vts(cam_mod, cam_mod->exp_config.vts_value);
-		mutex_unlock(&cam_mod->lock);
 	}
 
 	if (IS_ERR_VALUE(ret))
@@ -447,12 +443,11 @@ static int imx219_g_ctrl(struct imx_camera_module *cam_mod, u32 ctrl_id)
 
 	if (IS_ERR_VALUE(ret))
 		imx_camera_module_pr_debug(cam_mod,
-				"failed with error (%d)\n", ret);
+			"failed with error (%d)\n", ret);
 	return ret;
 }
 
 /*--------------------------------------------------------------------------*/
-
 static int imx219_filltimings(struct imx_camera_module_custom_config *custom)
 {
 	int i, j;
@@ -576,7 +571,9 @@ static int imx219_filltimings(struct imx_camera_module_custom_config *custom)
 					(timings->gain & 0x00));
 				printk("<brian> timing->gain = %d\n",timings->gain);
 				break;
-			}	
+			}
+
+			
 		}
 
 		timings->vt_pix_clk_freq_hz = config->frm_intrvl.interval.denominator
@@ -606,7 +603,6 @@ static int imx219_g_timings(struct imx_camera_module *cam_mod,
 	vts = (!cam_mod->vts_cur) ?
 		timings->frame_length_lines :
 		cam_mod->vts_cur;
-
 	if (cam_mod->frm_intrvl_valid)
 		timings->vt_pix_clk_freq_hz =
 			cam_mod->frm_intrvl.interval.denominator
@@ -617,21 +613,16 @@ static int imx219_g_timings(struct imx_camera_module *cam_mod,
 			cam_mod->active_config->frm_intrvl.interval.denominator
 			* vts
 			* timings->line_length_pck;
-
-	timings->frame_length_lines = vts;
-
 	return ret;
 err:
-	imx_camera_module_pr_err(cam_mod, "failed with error (%d)\n", ret);
+	imx_camera_module_pr_err(cam_mod,
+			"failed with error (%d)\n", ret);
 	return ret;
 }
 
 /*--------------------------------------------------------------------------*/
 
-static int imx219_set_flip(
-	struct imx_camera_module *cam_mod,
-	struct pltfrm_camera_module_reg reglist[],
-	int len)
+static int imx219_set_flip(struct imx_camera_module *cam_mod)
 {
 	int mode = 0;
 	u16 orientation = 0;
@@ -685,8 +676,7 @@ static int imx219_s_ctrl(struct imx_camera_module *cam_mod, u32 ctrl_id)
 
 	if (IS_ERR_VALUE(ret))
 		imx_camera_module_pr_debug(cam_mod,
-				"failed with error (%d) 0x%x\n",
-				ret, ctrl_id);
+			"failed with error (%d) 0x%x\n", ret, ctrl_id);
 	return ret;
 }
 
@@ -727,10 +717,7 @@ static int imx219_start_streaming(struct imx_camera_module *cam_mod)
 	if (IS_ERR_VALUE(ret))
 		goto err;
 
-	mutex_lock(&cam_mod->lock);
-	ret = imx_camera_module_write_reg(cam_mod, 0x0100, 1);
-	mutex_unlock(&cam_mod->lock);
-	if (IS_ERR_VALUE(ret))
+	if (IS_ERR_VALUE(imx_camera_module_write_reg(cam_mod, 0x0100, 1)))
 		goto err;
 
 	msleep(25);
@@ -750,9 +737,7 @@ static int imx219_stop_streaming(struct imx_camera_module *cam_mod)
 
 	imx_camera_module_pr_debug(cam_mod, "\n");
 
-	mutex_lock(&cam_mod->lock);
 	ret = imx_camera_module_write_reg(cam_mod, 0x0100, 0);
-	mutex_unlock(&cam_mod->lock);
 	if (IS_ERR_VALUE(ret))
 		goto err;
 
@@ -763,7 +748,6 @@ err:
 	imx_camera_module_pr_err(cam_mod, "failed with error (%d)\n", ret);
 	return ret;
 }
-
 /*--------------------------------------------------------------------------*/
 static int imx219_check_camera_id(struct imx_camera_module *cam_mod)
 {
@@ -811,7 +795,6 @@ static struct v4l2_subdev_core_ops imx219_camera_module_core_ops = {
 
 static struct v4l2_subdev_video_ops imx219_camera_module_video_ops = {
 	.s_frame_interval = imx_camera_module_s_frame_interval,
-	.g_frame_interval = imx_camera_module_g_frame_interval,
 	.s_stream = imx_camera_module_s_stream
 };
 static struct v4l2_subdev_pad_ops imx219_camera_module_pad_ops = {
@@ -837,27 +820,22 @@ static struct imx_camera_module_custom_config imx219_custom_config = {
 	.set_flip = imx219_set_flip,
 	.configs = imx219_configs,
 	.num_configs = ARRAY_SIZE(imx219_configs),
-	.power_up_delays_ms = {5, 20, 0},
-	/*
-	*0: Exposure time valid fileds;
-	*1: Exposure gain valid fileds;
-	*(2 fileds == 1 frames)
-	*/
-	.exposure_valid_frame = {4, 4}
+	.power_up_delays_ms = {5, 20, 0}
 };
 
 static int imx219_probe(
 	struct i2c_client *client,
 	const struct i2c_device_id *id)
 {
-	dev_info(&client->dev, "probing...\n");
+	//dev_info(&client->dev, "probing...\n");
+	printk("<brian> IMX219 probing...\n");
 
 	imx219_filltimings(&imx219_custom_config);
 	v4l2_i2c_subdev_init(&imx219.sd, client, &imx219_camera_module_ops);
 	imx219.custom = imx219_custom_config;
 
-	mutex_init(&imx219.lock);
-	dev_info(&client->dev, "probing successful\n");
+	//dev_info(&client->dev, "probing successful\n");
+	printk("<brian> IMX219 probing successful\n");
 	return 0;
 }
 
@@ -870,7 +848,6 @@ static int imx219_remove(struct i2c_client *client)
 	if (!client->adapter)
 		return -ENODEV;	/* our client isn't attached */
 
-	mutex_destroy(&cam_mod->lock);
 	imx_camera_module_release(cam_mod);
 
 	dev_info(&client->dev, "removed\n");
