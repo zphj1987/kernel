@@ -1015,7 +1015,7 @@
 };
 
 &dsi {
-	status = "okay";
+	status = "disabled";
 };
 
 &vopb_out_dsi {
@@ -1028,7 +1028,7 @@
 
 &dsi1 {
 	rockchip,dual-channel = <&dsi>;
-	status = "okay";
+	status = "disabled";
 
 	panel: panel@0 {
 		compatible ="rockpi,tc358762";
