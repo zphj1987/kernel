@@ -407,7 +407,6 @@ static int imx219_write_aec(struct imx_camera_module *cam_mod)
 			ret = imx219_auto_adjust_fps(cam_mod, cam_mod->exp_config.exp_time);
 
 		// Gain
-		printk("<brian> a_gain = %d\n", a_gain);
 		ret = imx_camera_module_write_reg(cam_mod, IMX219_AEC_PK_GAIN_REG, a_gain);
 
 		// Integration Time
@@ -569,7 +568,6 @@ static int imx219_filltimings(struct imx_camera_module_custom_config *custom)
 				timings->gain =
 					(reg_table[j].val |
 					(timings->gain & 0x00));
-				printk("<brian> timing->gain = %d\n",timings->gain);
 				break;
 			}
 
@@ -828,14 +826,12 @@ static int imx219_probe(
 	const struct i2c_device_id *id)
 {
 	//dev_info(&client->dev, "probing...\n");
-	printk("<brian> IMX219 probing...\n");
 
 	imx219_filltimings(&imx219_custom_config);
 	v4l2_i2c_subdev_init(&imx219.sd, client, &imx219_camera_module_ops);
 	imx219.custom = imx219_custom_config;
 
 	//dev_info(&client->dev, "probing successful\n");
-	printk("<brian> IMX219 probing successful\n");
 	return 0;
 }
 
