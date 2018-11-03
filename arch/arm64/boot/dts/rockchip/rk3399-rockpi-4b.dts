@@ -174,6 +174,21 @@
 		#sound-dai-cells = <0>;
 	};
 
+	hdmi_codec: hdmi-codec {
+		compatible = "simple-audio-card";
+		simple-audio-card,format = "i2s";
+		simple-audio-card,mclk-fs = <256>;
+		simple-audio-card,name = "HDMI-CODEC";
+
+		simple-audio-card,cpu {
+			sound-dai = <&i2s2>;
+		};
+
+		simple-audio-card,codec {
+			sound-dai = <&hdmi>;
+		};
+	};
+
 	spdif-sound {
 		status = "okay";
 		compatible = "simple-audio-card";
@@ -211,7 +226,7 @@
 	wireless-wlan {
 		compatible = "wlan-platdata";
 		rockchip,grf = <&grf>;
-		wifi_chip_type = "ap6255";
+		wifi_chip_type = "ap6256";
 		sdio_vref = <1800>;
 		WIFI,host_wake_irq = <&gpio0 3 GPIO_ACTIVE_HIGH>;
 		status = "okay";
@@ -290,10 +305,6 @@
 		<297000000 0x8039 0x0005 0x028d>,
 		<594000000 0x8039 0x0000 0x019d>,
 		<000000000 0x0000 0x0000 0x0000>;
-};
-
-&hdmi_dp_sound {
-	status = "okay";
 };
 
 &hdmi_in_vopl {
@@ -491,7 +502,7 @@
 			};
 
 			vcc1v8_dvp: LDO_REG1 {
-				regulator-name = "vcc1v8_dvp";
+				regulator-name = "vcc1v8_codec";
 				regulator-min-microvolt = <1800000>;
 				regulator-max-microvolt = <1800000>;
 				regulator-always-on;
@@ -688,7 +699,7 @@
 &u2phy0 {
 	status = "okay";
 
-	otg-vbus-gpios= <&gpio1 3 GPIO_ACTIVE_HIGH>;
+	otg-vbus-gpios = <&gpio1 3 GPIO_ACTIVE_HIGH>;
 	u2phy0_otg: otg-port {
 		status = "okay";
 	};
@@ -719,10 +730,6 @@
 };
 
 &uart2 {
-	status = "okay";
-};
-
-&uart3 {
 	status = "okay";
 };
 
@@ -990,6 +997,7 @@
 			rockchip,pins =
 				<4 25 RK_FUNC_GPIO &pcfg_pull_none>;
 		};
+
 	};
 
 	pcie {
