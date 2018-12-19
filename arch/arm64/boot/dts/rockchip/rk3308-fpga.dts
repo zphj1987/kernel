@@ -6,7 +6,8 @@
 
 /dts-v1/;
 
-#include "rk3308.dtsi"
+/* #include "rk3308.dtsi" */
+#include "rk3308k.dtsi"
 
 / {
 	model = "Rockchip RK3308 FPGA Platform";
