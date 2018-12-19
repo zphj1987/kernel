@@ -4,7 +4,8 @@
  */
 
 #include <dt-bindings/input/input.h>
-#include "arm64/rockchip/rk3308.dtsi"
+/* #include "arm64/rockchip/rk3308.dtsi" */
+#include "arm64/rockchip/rk3308k.dtsi"
 
 / {
 	model = "Rockchip RK3308 Voice Module Board V10";
