@@ -23,6 +23,8 @@
 #define DRIVER_NAME	"pwm-ir-tx"
 #define DEVICE_NAME	"PWM IR Transmitter"
 
+#define to_rc_device(obj) container_of(obj, struct rc_dev, dev)
+
 struct pwm_ir {
 	struct pwm_device *pwm;
 	unsigned int carrier;
@@ -56,6 +58,18 @@ static int pwm_ir_set_carrier(struct rc_dev *dev, u32 carrier)
 	return 0;
 }
 
+static void ir_delay(long time){
+	while (time > 0) {
+		if (time > 2000) {
+			time = time - 2000;
+			mdelay(2);
+		} else {
+			udelay(time);
+			break;
+		}
+	}
+}
+
 static int pwm_ir_tx(struct rc_dev *dev, unsigned int *txbuf,
 		     unsigned int count)
 {
@@ -64,14 +78,15 @@ static int pwm_ir_tx(struct rc_dev *dev, unsigned int *txbuf,
 	int i, duty, period;
 	ktime_t edge;
 	long delta;
+	unsigned long flags;
 
 	period = DIV_ROUND_CLOSEST(NSEC_PER_SEC, pwm_ir->carrier);
 	duty = DIV_ROUND_CLOSEST(pwm_ir->duty_cycle * period, 100);
 
 	pwm_config(pwm, duty, period);
 
+	local_irq_save(flags);
 	edge = ktime_get();
-
 	for (i = 0; i < count; i++) {
 		if (i % 2) // space
 			pwm_disable(pwm);
@@ -81,19 +96,141 @@ static int pwm_ir_tx(struct rc_dev *dev, unsigned int *txbuf,
 		edge = ktime_add_us(edge, txbuf[i]);
 		delta = ktime_us_delta(edge, ktime_get());
 		if (delta > 0)
-			usleep_range(delta, delta + 10);
+			ir_delay(delta);
+			/* usleep_range(delta, delta + 10); */
 	}
 
 	pwm_disable(pwm);
+	local_irq_restore(flags);
 
 	return count;
 }
+
+static ssize_t duty_ratio_store(struct device *dev,
+				struct device_attribute *attr,
+				const char *buf,
+				size_t count)
+{
+	int ret = 0;
+	unsigned long duty_ratio = 0;
+	struct rc_dev *rcd = to_rc_device(dev);
+
+	ret = kstrtoul(buf, 0, &duty_ratio);
+	if (ret) {
+		dev_err(dev, "duty_ratio param error!\n");
+		return ret;
+	}
+
+	if (duty_ratio > 0)
+		pwm_ir_set_duty_cycle(rcd, duty_ratio);
+
+	return count;
+}
+
+static ssize_t duty_ratio_show(struct device *dev,
+			       struct device_attribute *attr,
+			       char *buf)
+{
+	struct rc_dev *rcd = to_rc_device(dev);
+	struct pwm_ir *pwm_ir = rcd->priv;
+
+	return sprintf(buf, "duty_ratio: %u\n", pwm_ir->duty_cycle);
+}
+
+static ssize_t frequency_store(struct device *dev,
+			       struct device_attribute *attr,
+			       const char *buf,
+			       size_t count)
+{
+	int ret = 0;
+	unsigned long frequency = 0;
+	struct rc_dev *rcd = to_rc_device(dev);
+
+	ret = kstrtoul(buf, 0, &frequency);
+	if (ret) {
+		dev_err(dev, "frequency param error!\n");
+		return ret;
+	}
+
+	if (frequency > 0)
+		pwm_ir_set_carrier(rcd, frequency);
+
+	return count;
+}
+
+static ssize_t frequency_show(struct device *dev,
+			      struct device_attribute *attr,
+			      char *buf)
+{
+	struct rc_dev *rcd = to_rc_device(dev);
+	struct pwm_ir *pwm_ir = rcd->priv;
+
+	return sprintf(buf, "frequency: %u\n", pwm_ir->carrier);
+}
+
+static ssize_t transmit_store(struct device *dev,
+			      struct device_attribute *attr,
+			      const char *buf,
+			      size_t count)
+{
+	int ret = 0, index = 0;
+	char delim[] = ",";
+	char *copy_buf = NULL, *token = NULL;
+	unsigned long *patterns = NULL;
+	struct rc_dev *rcd = to_rc_device(dev);
+
+	copy_buf = kstrdup(buf, GFP_KERNEL);
+	if (!copy_buf)
+		return -1;
+
+	patterns = kzalloc(sizeof(unsigned long) * 512, GFP_KERNEL);
+	if (!patterns)
+		goto exit;
+
+	pr_info("%s: %s\n", __func__, copy_buf);
+
+	while ((token = strsep(&copy_buf, delim)) != NULL) {
+		ret = kstrtoul(token, 0, patterns + (index++));
+		if (ret) {
+			dev_err(dev,
+				"%s: kstrtoul error\n",
+				__func__);
+			goto exit1;
+		}
+	}
+
+	pwm_ir_tx(rcd, (unsigned int *)patterns, index);
+
+	if (!ret)
+		ret = count;
+
+exit1:
+	if (patterns)
+		kzfree(patterns);
+exit:
+	kfree(copy_buf);
+
+	return ret;
+}
+
+static ssize_t transmit_show(struct device *dev,
+			     struct device_attribute *attr,
+			     char *buf)
+{
+	return 0;
+}
+
+static const struct device_attribute ir_attrs[] = {
+	__ATTR_RW(duty_ratio),
+	__ATTR_RW(frequency),
+	__ATTR_RW(transmit),
+};
 
 static int pwm_ir_probe(struct platform_device *pdev)
 {
 	struct pwm_ir *pwm_ir;
 	struct rc_dev *rcdev;
-	int rc;
+	int i, rc;
 
 	pwm_ir = devm_kmalloc(&pdev->dev, sizeof(*pwm_ir), GFP_KERNEL);
 	if (!pwm_ir)
@@ -120,6 +257,23 @@ static int pwm_ir_probe(struct platform_device *pdev)
 	rc = devm_rc_register_device(&pdev->dev, rcdev);
 	if (rc < 0)
 		dev_err(&pdev->dev, "failed to register rc device\n");
+
+	rc = pwm_adjust_config(pwm_ir->pwm);
+	if (rc) {
+		dev_err(&pdev->dev,
+			"pwm adjust config failed! err = %d\n",
+			rc);
+		return rc;
+	}
+
+	for (i = 0; i < ARRAY_SIZE(ir_attrs); i++) {
+		if (device_create_file(&rcdev->dev, &ir_attrs[i])) {
+			dev_err(&rcdev->dev,
+				"Create %s attr failed\n",
+				rcdev->driver_name);
+			return -ENOMEM;
+		}
+	}
 
 	return rc;
 }
