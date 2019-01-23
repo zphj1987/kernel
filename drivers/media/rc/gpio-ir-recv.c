@@ -22,13 +22,98 @@
 #include <linux/irq.h>
 #include <media/rc-core.h>
 #include <media/gpio-ir-recv.h>
+#include "rc-core-priv.h"
 
 #define GPIO_IR_DEVICE_NAME	"gpio_ir_recv"
+#define to_rc_device(obj) container_of(obj, struct rc_dev, dev)
+
+static struct lirc_fh *fh;
+static u32 ir_recv_dbg = 1;
 
 struct gpio_rc_dev {
 	struct rc_dev *rcdev;
 	struct gpio_desc *gpiod;
 	int irq;
+};
+
+static ssize_t ir_raw_store(struct device *dev,
+			    struct device_attribute *attr,
+			    const char *buf,
+			    size_t count)
+{
+	int ret;
+
+	ret = kstrtou32(buf, 0, &ir_recv_dbg);
+	if (ret) {
+		dev_err(dev, "debug flag param error!\n");
+		ir_recv_dbg = 0;
+		return ret;
+	}
+
+	return count;
+}
+
+static ssize_t ir_raw_show(struct device *dev,
+			   struct device_attribute *attr,
+			   char *buf)
+{
+	int ret, sample, cnt = 0;
+	struct rc_dev *rcdev = to_rc_device(dev);
+
+	if (!fh)
+		return -EINVAL;
+
+	ret = mutex_lock_interruptible(&rcdev->lock);
+	if (ret)
+		return ret;
+	kfifo_reset(&fh->rawir);
+	mutex_unlock(&rcdev->lock);
+
+	do {
+		if (kfifo_is_empty(&fh->rawir)) {
+			ret = wait_event_interruptible(fh->wait_poll,
+						       !kfifo_is_empty(&fh->rawir) ||
+						       !rcdev->registered);
+			if (ret)
+				return ret;
+		}
+
+		if (!rcdev->registered)
+			return -ENODEV;
+
+		ret = mutex_lock_interruptible(&rcdev->lock);
+		if (ret)
+			return ret;
+		ret = kfifo_out(&fh->rawir, &sample, 1);
+		mutex_unlock(&rcdev->lock);
+
+		if (ret) {
+			if (ir_recv_dbg)
+				pr_info("%s %u\n",
+					LIRC_IS_SPACE(sample) ? "space" : "pulse",
+					LIRC_VALUE(sample));
+
+			if (LIRC_VALUE(sample) >= 130 * 1000)
+				continue;
+
+			if (LIRC_VALUE(sample) > 125 * 1000 &&
+			    LIRC_VALUE(sample) < 130 * 1000)
+				return cnt;
+
+			if (!cnt)
+				cnt =  sprintf(buf, "%u", LIRC_VALUE(sample));
+			else
+				cnt += sprintf(buf + cnt,
+					       ",%u",
+					       LIRC_VALUE(sample));
+		}
+	} while (1);
+
+	return 0;
+}
+
+static const struct device_attribute ir_attrs[] = {
+	__ATTR_RW(ir_raw),
 };
 
 static irqreturn_t gpio_ir_recv_irq(int irq, void *dev_id)
@@ -50,6 +135,8 @@ static int gpio_ir_recv_probe(struct platform_device *pdev)
 	struct gpio_rc_dev *gpio_dev;
 	struct rc_dev *rcdev;
 	int rc;
+	int i;
+	unsigned long flags;
 
 	if (!np)
 		return -ENODEV;
@@ -100,6 +187,38 @@ static int gpio_ir_recv_probe(struct platform_device *pdev)
 	}
 
 	platform_set_drvdata(pdev, gpio_dev);
+
+	for (i = 0; i < ARRAY_SIZE(ir_attrs); i++) {
+		if (device_create_file(&rcdev->dev, &ir_attrs[i])) {
+			dev_err(&rcdev->dev,
+				"Create %s attr failed\n",
+				rcdev->driver_name);
+			return -ENOMEM;
+		}
+	}
+
+	fh = kzalloc(sizeof(*fh), GFP_KERNEL);
+	if (!fh)
+		return -ENOMEM;
+
+	if (kfifo_alloc(&fh->rawir, MAX_IR_EVENT_SIZE, GFP_KERNEL)) {
+		kfree(fh);
+		return -ENOMEM;
+	}
+
+	if (kfifo_alloc(&fh->scancodes, 32, GFP_KERNEL)) {
+		kfifo_free(&fh->rawir);
+		kfree(fh);
+		return -ENOMEM;
+	}
+	fh->send_mode = LIRC_MODE_PULSE;
+	fh->rc = rcdev;
+	fh->send_timeout_reports = true;
+	fh->rec_mode = LIRC_MODE_MODE2;
+	init_waitqueue_head(&fh->wait_poll);
+	spin_lock_irqsave(&rcdev->lirc_fh_lock, flags);
+	list_add(&fh->list, &rcdev->lirc_fh);
+	spin_unlock_irqrestore(&rcdev->lirc_fh_lock, flags);
 
 	return devm_request_irq(dev, gpio_dev->irq, gpio_ir_recv_irq,
 				IRQF_TRIGGER_FALLING | IRQF_TRIGGER_RISING,
