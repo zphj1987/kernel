@@ -175,7 +175,7 @@ static ssize_t transmit_store(struct device *dev,
 {
 	int ret = 0, index = 0;
 	char delim[] = ",";
-	char *copy_buf = NULL, *token = NULL;
+	char *tmp, *copy_buf = NULL, *token = NULL;
 	unsigned long *patterns = NULL;
 	struct rc_dev *rcd = to_rc_device(dev);
 
@@ -189,7 +189,8 @@ static ssize_t transmit_store(struct device *dev,
 
 	pr_info("%s: %s\n", __func__, copy_buf);
 
-	while ((token = strsep(&copy_buf, delim)) != NULL) {
+	tmp = copy_buf;
+	while ((token = strsep(&tmp, delim)) != NULL) {
 		ret = kstrtoul(token, 0, patterns + (index++));
 		if (ret) {
 			dev_err(dev,
