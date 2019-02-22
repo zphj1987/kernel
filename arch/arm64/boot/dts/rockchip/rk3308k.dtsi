@@ -13,6 +13,21 @@
 	};
 };
 
+&cpu0_opp_table {
+	rockchip,high-temp = <55000>;
+	rockchip,high-temp-max-volt = <1125000>;
+};
+
+&rockchip_suspend {
+	rockchip,sleep-mode-config = <
+		(0
+		| RKPM_PMU_HW_PLLS_PD
+		| RKPM_DBG_FSM_SOUT
+		| RKPM_PWM_VOLTAGE_DEFAULT
+		)
+	>;
+};
+
 &thermal_zones {
 	soc-thermal {
 		sustainable-power = <308>;
@@ -30,14 +45,3 @@
 		};
 	};
 };
-
-&rockchip_suspend {
-	rockchip,sleep-mode-config = <
-		(0
-		| RKPM_PMU_HW_PLLS_PD
-		| RKPM_DBG_FSM_SOUT
-		| RKPM_PWM_VOLTAGE_DEFAULT
-		)
-	>;
-};
-
