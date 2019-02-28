@@ -100,6 +100,9 @@ static ssize_t ir_raw_show(struct device *dev,
 			    LIRC_VALUE(sample) < 130 * 1000)
 				return cnt;
 
+			if (cnt >= 3 * 1024)
+				return cnt;
+
 			if (!cnt)
 				cnt =  sprintf(buf, "%u", LIRC_VALUE(sample));
 			else
