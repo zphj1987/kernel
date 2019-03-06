@@ -19,11 +19,22 @@
 #include <linux/of.h>
 #include <linux/platform_device.h>
 #include <media/rc-core.h>
+#include "rc-core-priv.h"
 
 #define DRIVER_NAME	"pwm-ir-tx"
 #define DEVICE_NAME	"PWM IR Transmitter"
 
 #define to_rc_device(obj) container_of(obj, struct rc_dev, dev)
+
+int ir_tx_debug;
+module_param_named(debug, ir_tx_debug, int, 0644);
+MODULE_PARM_DESC(debug, "debug level (0-2)");
+
+#define dprintk(lvl, fmt, arg...)                                  \
+	do {                                                       \
+		if ((lvl) <= ir_tx_debug)                          \
+			pr_info("%s: " fmt, __func__, ## arg);     \
+	} while (0)
 
 struct pwm_ir {
 	struct pwm_device *pwm;
@@ -58,7 +69,8 @@ static int pwm_ir_set_carrier(struct rc_dev *dev, u32 carrier)
 	return 0;
 }
 
-static void ir_delay(long time){
+static void ir_delay(long time)
+{
 	while (time > 0) {
 		if (time > 2000) {
 			time = time - 2000;
@@ -70,13 +82,15 @@ static void ir_delay(long time){
 	}
 }
 
-static int pwm_ir_tx(struct rc_dev *dev, unsigned int *txbuf,
+static int pwm_ir_tx(struct rc_dev *dev,
+		     unsigned int *txbuf,
 		     unsigned int count)
 {
 	struct pwm_ir *pwm_ir = dev->priv;
 	struct pwm_device *pwm = pwm_ir->pwm;
-	int i, duty, period;
-	ktime_t edge;
+	unsigned int i;
+	int duty, period;
+	ktime_t edge, tmp;
 	long delta;
 	unsigned long flags;
 
@@ -85,6 +99,7 @@ static int pwm_ir_tx(struct rc_dev *dev, unsigned int *txbuf,
 
 	pwm_config(pwm, duty, period);
 
+	tmp = ktime_get();
 	local_irq_save(flags);
 	edge = ktime_get();
 	for (i = 0; i < count; i++) {
@@ -95,14 +110,17 @@ static int pwm_ir_tx(struct rc_dev *dev, unsigned int *txbuf,
 
 		edge = ktime_add_us(edge, txbuf[i]);
 		delta = ktime_us_delta(edge, ktime_get());
+		dprintk(2, "delta %ld|%d\n", delta, txbuf[i]);
+
 		if (delta > 0)
 			ir_delay(delta);
 			/* usleep_range(delta, delta + 10); */
 	}
-
 	pwm_disable(pwm);
 	local_irq_restore(flags);
-
+	pr_info("%s: spend time =  %llu\n",
+		__func__,
+		ktime_to_ms(ktime_sub(ktime_get(), tmp)));
 	return count;
 }
 
@@ -176,38 +194,47 @@ static ssize_t transmit_store(struct device *dev,
 	int ret = 0, index = 0;
 	char delim[] = ",";
 	char *tmp, *copy_buf = NULL, *token = NULL;
-	unsigned long *patterns = NULL;
+
+	unsigned int *patterns = NULL, times = 0;
 	struct rc_dev *rcd = to_rc_device(dev);
 
 	copy_buf = kstrdup(buf, GFP_KERNEL);
 	if (!copy_buf)
 		return -1;
+	dprintk(1, "%s\n", copy_buf);
 
-	patterns = kzalloc(sizeof(unsigned long) * 512, GFP_KERNEL);
+	patterns = kzalloc(sizeof(unsigned int) * MAX_IR_EVENT_SIZE,
+			   GFP_KERNEL);
 	if (!patterns)
 		goto exit;
 
-	pr_info("%s: %s\n", __func__, copy_buf);
-
 	tmp = copy_buf;
-	while ((token = strsep(&tmp, delim)) != NULL) {
-		ret = kstrtoul(token, 0, patterns + (index++));
+	while ((token = strsep(&tmp, delim)) != NULL &&
+	       index < MAX_IR_EVENT_SIZE) {
+		ret = kstrtouint(token, 0, patterns + (index++));
 		if (ret) {
 			dev_err(dev,
-				"%s: kstrtoul error\n",
+				"%s: kstrtouint error\n",
 				__func__);
 			goto exit1;
 		}
-	}
 
-	pwm_ir_tx(rcd, (unsigned int *)patterns, index);
+		times += *(patterns + index - 1);
+		if (times >= 1000 * 1000)
+			break;
+	}
+	pr_info("\n%s: total times = %u cnt = %d\n",
+		__func__,
+		times / 1000,
+		index);
+
+	pwm_ir_tx(rcd, patterns, index);
 
 	if (!ret)
 		ret = count;
 
 exit1:
-	if (patterns)
-		kzfree(patterns);
+	kzfree(patterns);
 exit:
 	kfree(copy_buf);
 
@@ -231,7 +258,8 @@ static int pwm_ir_probe(struct platform_device *pdev)
 {
 	struct pwm_ir *pwm_ir;
 	struct rc_dev *rcdev;
-	int i, rc;
+	unsigned int i;
+	int rc;
 
 	pwm_ir = devm_kmalloc(&pdev->dev, sizeof(*pwm_ir), GFP_KERNEL);
 	if (!pwm_ir)
