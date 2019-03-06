@@ -27,8 +27,17 @@
 #define GPIO_IR_DEVICE_NAME	"gpio_ir_recv"
 #define to_rc_device(obj) container_of(obj, struct rc_dev, dev)
 
+int ir_rx_debug;
+module_param_named(debug, ir_rx_debug, int, 0644);
+MODULE_PARM_DESC(debug, "debug level (0-2)");
+
+#define dprintk(lvl, fmt, arg...)                                  \
+	do {                                                       \
+		if ((lvl) <= ir_rx_debug)                          \
+			pr_info("%s: " fmt, __func__, ## arg);     \
+	} while (0)
+
 static struct lirc_fh *fh;
-static u32 ir_recv_dbg = 1;
 
 struct gpio_rc_dev {
 	struct rc_dev *rcdev;
@@ -41,15 +50,6 @@ static ssize_t ir_raw_store(struct device *dev,
 			    const char *buf,
 			    size_t count)
 {
-	int ret;
-
-	ret = kstrtou32(buf, 0, &ir_recv_dbg);
-	if (ret) {
-		dev_err(dev, "debug flag param error!\n");
-		ir_recv_dbg = 0;
-		return ret;
-	}
-
 	return count;
 }
 
@@ -88,10 +88,10 @@ static ssize_t ir_raw_show(struct device *dev,
 		mutex_unlock(&rcdev->lock);
 
 		if (ret) {
-			if (ir_recv_dbg)
-				pr_info("%s %u\n",
-					LIRC_IS_SPACE(sample) ? "space" : "pulse",
-					LIRC_VALUE(sample));
+			dprintk(1,
+				"%s %u\n",
+				LIRC_IS_SPACE(sample) ? "space" : "pulse",
+				LIRC_VALUE(sample));
 
 			if (LIRC_VALUE(sample) >= 130 * 1000)
 				continue;
@@ -100,7 +100,7 @@ static ssize_t ir_raw_show(struct device *dev,
 			    LIRC_VALUE(sample) < 130 * 1000)
 				return cnt;
 
-			if (cnt >= 3 * 1024)
+			if (cnt >= 2 * 1024)
 				return cnt;
 
 			if (!cnt)
@@ -127,6 +127,7 @@ static irqreturn_t gpio_ir_recv_irq(int irq, void *dev_id)
 	val = gpiod_get_value(gpio_dev->gpiod);
 	if (val >= 0)
 		ir_raw_event_store_edge(gpio_dev->rcdev, val == 1);
+	dprintk(2, "val = %d\n", val);
 
 	return IRQ_HANDLED;
 }
@@ -138,7 +139,7 @@ static int gpio_ir_recv_probe(struct platform_device *pdev)
 	struct gpio_rc_dev *gpio_dev;
 	struct rc_dev *rcdev;
 	int rc;
-	int i;
+	unsigned int i;
 	unsigned long flags;
 
 	if (!np)
