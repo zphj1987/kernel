@@ -1529,6 +1529,7 @@ static void rk816_bat_set_chrg_param(struct rk816_battery *di,
 			di->prop_status = POWER_SUPPLY_STATUS_DISCHARGING;
 			rk816_bat_set_current(di, INPUT_CUR450MA);
 		}
+		power_supply_changed(di->bat);
 		power_supply_changed(di->usb);
 		power_supply_changed(di->ac);
 		break;
@@ -1538,6 +1539,7 @@ static void rk816_bat_set_chrg_param(struct rk816_battery *di,
 		di->prop_status = POWER_SUPPLY_STATUS_CHARGING;
 		if (di->dc_in == 0)
 			rk816_bat_set_current(di, INPUT_CUR450MA);
+		power_supply_changed(di->bat);
 		power_supply_changed(di->usb);
 		break;
 	case USB_TYPE_CDP_CHARGER:
@@ -1547,6 +1549,7 @@ static void rk816_bat_set_chrg_param(struct rk816_battery *di,
 		if (di->dc_in == 0)
 			rk816_bat_set_current(di, INPUT_CUR1500MA);
 		power_supply_changed(di->usb);
+		power_supply_changed(di->bat);
 		break;
 	case USB_TYPE_AC_CHARGER:
 		di->ac_in = 1;
@@ -1559,6 +1562,7 @@ static void rk816_bat_set_chrg_param(struct rk816_battery *di,
 		else
 			rk816_bat_set_current(di, di->chrg_cur_input);
 		power_supply_changed(di->ac);
+		power_supply_changed(di->bat);
 		break;
 	case DC_TYPE_DC_CHARGER:
 		di->dc_in = 1;
@@ -1570,6 +1574,7 @@ static void rk816_bat_set_chrg_param(struct rk816_battery *di,
 		else
 			rk816_bat_set_current(di, di->chrg_cur_input);
 		power_supply_changed(di->ac);
+		power_supply_changed(di->bat);
 		break;
 	case DC_TYPE_NONE_CHARGER:
 		di->dc_in = 0;
@@ -1588,6 +1593,7 @@ static void rk816_bat_set_chrg_param(struct rk816_battery *di,
 			rk816_bat_set_current(di, INPUT_CUR450MA);
 			di->prop_status = POWER_SUPPLY_STATUS_CHARGING;
 		}
+		power_supply_changed(di->bat);
 		power_supply_changed(di->usb);
 		power_supply_changed(di->ac);
 		break;
