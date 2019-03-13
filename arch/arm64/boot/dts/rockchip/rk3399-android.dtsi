@@ -95,7 +95,7 @@
 		secure_memory: secure-memory@e7000000 {
 			compatible = "rockchip,secure-memory";
 			reg = <0x0 0xe7000000 0x0 0x10000000>;
-			status = "disabled";
+			status = "okey";
 		};
 
 		stb_devinfo: stb-devinfo@00000000 {
