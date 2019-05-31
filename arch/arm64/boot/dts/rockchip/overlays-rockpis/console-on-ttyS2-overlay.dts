@@ -1,0 +1,16 @@
+// Definitions for setting uart4 pins as ttyFIQ0 console pins
+/dts-v1/;
+/plugin/;
+
+/ {
+	model = "ROCK PI S";
+	compatible = "rockchip,rockpis-rk3308", "rockchip,rk3308";
+
+	fragment@0 {
+		target = <&fiq_debugger>;
+
+		__overlay__ {
+			status = "okay";
+		};
+	};
+};

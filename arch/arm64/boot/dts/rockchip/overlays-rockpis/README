@@ -1,0 +1,141 @@
+Introduction
+=============
+
+This directory contains Device Tree overlays. Device Tree makes it possible
+to support many hardware configurations with a single kernel and without the
+need to explicitly load or blacklisr kernel modules.
+
+On Rock Pi S, you will find a .dtb for each base platform in /boot. This
+describes the hardware that is part of the Rock Pi S board. The loader selects
+the .dtb file appropriate for the platform by name and pass it to the kernel.
+
+Device Tree Overlays usage is controlled from /boot/hw_intfc.conf. You can do
+the settings for Rock Pi S in your hw_intfc.conf, which should cause your
+Rock Pi S to do your wanted things after a reboot.
+
+In /boot/overlays you will find many .dtbo files. The loader will merge the
+selected .dtbo files by reading file /boot/hw_intfc.conf.
+
+
+Using Overlays
+===============
+
+Overlays are loaded using "intfc:" directive. Take disable-console as an example.
+Add one line in hw_intfc.conf:
+
+	intfc:dtoverlay=console-on-ttyS2
+
+This causes the file /boot/overlays/disable-console.dtbo to be loaded.
+
+
+The Overlay and Parameter Reference
+=====================================
+
+N.B. When editing this file, please preserve the indentation levels to make it
+simple to parse programmatically. NO HARD TABS.
+
+Name:	i2c1
+Info:	Overlay for BUS I2C1
+Load:	intfc:i2c1=<value>
+Value:
+		on		Set to "on" to enable the i2c1 interface (default "off")
+		off		Set to "off" to disable the i2c1 interface
+
+
+Name:	i2c2
+Info:	Overlay for BUS I2C2
+Load:	intfc:i2c2=<value>
+Value:
+		on		Set to "on" to enable the i2c2 interface (default "off")
+		off		Set to "off" to disable the i2c2 interface
+
+
+Name:	i2c3
+Info:	Overlay for BUS I2C3
+Load:	intfc:i2c3=<value>
+Value:
+		on		Set to "on" to enable the i2c3 interface (default "off")
+		off		Set to "off" to disable the i2c3 interface
+
+
+Name:	i2c4
+Info:	Overlay for BUS I2C4
+Load:	intfc:i2c4=<value>
+Value:
+		on		Set to "on" to enable the i2c4 interface (default "off")
+		off		Set to "off" to disable the i2c4 interface
+
+
+Name:	pwm1
+Info:	Overlay for BUS PWM1
+Load:	intfc:pwm1=<value>
+Value:
+		on		Set to "on" to enable the pwm1 interface (default "off")
+		off		Set to "off" to disable the pwm1 interface
+
+
+Name:	pwm2
+Info:	Overlay for BUS PWM2
+Load:	intfc:pwm2=<value>
+Value:
+		on		Set to "on" to enable the pwm2 interface (default "off")
+		off		Set to "off" to disable the pwm2 interface
+
+
+Name:	pwm3
+Info:	Overlay for BUS PWM3
+Load:	intfc:pwm3=<value>
+Value:
+		on		Set to "on" to enable the pwm3 interface (default "off")
+		off		Set to "off" to disable the pwm3 interface
+
+
+Name:	spi0
+Info:	Overlay for BUS SPI0
+Load:	intfc:spi0=<value>
+Value:
+		on		Set to "on" to enable the spi0 interface (default "off")
+		off		Set to "off" to disable the spi0 interface
+
+
+Name:	spi2
+Info:	Overlay for BUS SPI2
+Load:	intfc:spi2=<value>
+Value:
+		on		Set to "on" to enable the spi2 interface (default "off")
+		off		Set to "off" to disable the spi2 interface
+
+
+Name:	uart0
+Info:	Overlay for BUS UART0
+Load:	intfc:uart0=<value>
+Value:
+		on		Set to "on" to enable the uart0 interface (default "off")
+		off		Set to "off" to disable the uart0 interface
+
+
+Name:	uart1
+Info:	Overlay for BUS UART1
+Load:	intfc:uart1=<value>
+Value:
+		on		Set to "on" to enable the uart1 interface (default "off")
+		off		Set to "off" to disable the uart1 interface
+
+
+Name:	uart2
+Info:	Overlay for BUS UART2
+Load:	intfc:uart2=<value>
+Value:
+		on		Set to "on" to enable the uart2 interface (default "off")
+		off		Set to "off" to disable the uart2 interface
+
+
+N.B. It is recommended to only ebable those bus interfaces that are needed.
+Leaving all interfaces enabled can lead to unwanted behaviour.
+
+
+Name:   console-on-ttyS2.dtbo
+Info:   By default, fiq debugger console is disabled.
+        When this dtbo file is loaded, Rock Pi S enables fiq debugger console.
+        ttyS2 Pins will output console information.
+Load:   intfc:dtoverlay=console-on-ttyS2
