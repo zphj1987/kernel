@@ -10,8 +10,8 @@
 #include "rk3308k.dtsi"
 
 / {
-	model = "ROCK PI S";
-	compatible = "rockchip,rockpis-rk3308", "rockchip,rk3308";
+	model = "Radxa ROCK Pi S";
+	compatible = "radxa,rockpis-rk3308", "rockchip,rk3308";
 
 	adc-keys1 {
 		compatible = "adc-keys";
