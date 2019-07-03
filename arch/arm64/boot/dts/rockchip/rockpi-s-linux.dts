@@ -13,30 +13,6 @@
 	model = "Radxa ROCK Pi S";
 	compatible = "radxa,rockpis-rk3308", "rockchip,rk3308";
 
-	adc-keys1 {
-		compatible = "adc-keys";
-		io-channels = <&saradc 1>;
-		io-channel-names = "buttons";
-		poll-interval = <100>;
-		keyup-threshold-microvolt = <1800000>;
-
-		play-key {
-			linux,code = <KEY_PLAY>;
-			label = "play";
-			press-threshold-microvolt = <625000>;
-		};
-	};
-
-	rotary {
-		compatible = "rotary-encoder";
-		pinctrl-names = "default";
-		pinctrl-0 = <&rotary_gpio>;
-		gpios = <&gpio2 RK_PB3 GPIO_ACTIVE_LOW>,
-			<&gpio2 RK_PB4 GPIO_ACTIVE_LOW>;
-		linux,axis = <0>; /* REL_X */
-		rotary-encoder,relative-axis;
-	};
-
 	sdio_pwrseq: sdio-pwrseq {
 		compatible = "mmc-pwrseq-simple";
 		pinctrl-names = "default";
@@ -49,36 +25,6 @@
 		 * - PDN (power down when low)
 		 */
 		reset-gpios = <&gpio0 RK_PA2 GPIO_ACTIVE_LOW>;
-	};
-
-	sound {
-		status = "disabled";
-		compatible = "simple-audio-card";
-		simple-audio-card,format = "i2s";
-		simple-audio-card,mclk-fs = <256>;
-		simple-audio-card,name = "i2s_8ch_0";
-
-		simple-audio-card,dai-link@0 {
-			format = "i2s";
-			cpu {
-				sound-dai = <&i2s_8ch_0>;
-			};
-
-			codec {
-				sound-dai = <&dummy_codec>;
-			};
-		};
-
-		simple-audio-card,dai-link@1 {
-			format = "i2s";
-			cpu {
-				sound-dai = <&i2s_8ch_0>;
-			};
-
-			codec {
-				sound-dai = <&tas5711>;
-			};
-		};
 	};
 
 	dummy_codec: dummy-codec {
@@ -132,7 +78,6 @@
 		regulator-name = "vccio_sd";
 		regulator-min-microvolt = <1800000>;
 		regulator-max-microvolt = <3300000>;
-		gpios = <&gpio0 RK_PB7 GPIO_ACTIVE_HIGH>;
 		states = <1800000 0x0
 			  3300000 0x1>;
 	};
@@ -300,25 +245,6 @@
 	vccio5-supply = <&vcc_io>;
 };
 
-&i2c1 {
-	status = "okay";
-	clock-frequency = <400000>;
-//	i2c-scl-rising-time-ns = <300>;
-//	i2c-scl-falling-time-ns = <15>;
-
-	tas5711: tas5711@1b {
-		#sound-dai-cells = <0>;
-		compatible = "ti,tas5711";
-		reg = <0x1b>;
-		clocks = <&cru SCLK_I2S0_8CH_TX_OUT>;
-		clock-names = "mclk";
-		pinctrl-names = "default";
-		pinctrl-0 = <&i2s_8ch_0_mclk>;
-		pdn-gpios = <&gpio0 RK_PA5 GPIO_ACTIVE_LOW>;
-		reset-gpios = <&gpio0 RK_PC4 GPIO_ACTIVE_LOW>;
-	};
-};
-
 &i2s_8ch_0 {
 	status = "okay";
 	assigned-clocks = <&cru SCLK_I2S0_8CH_RX>;
@@ -377,11 +303,6 @@
 	status = "okay";
 };
 
-&saradc {
-	status = "okay";
-	vref-supply = <&vcc_1v8>;
-};
-
 &sdio {
 	max-frequency = <110000000>;
 	bus-width = <4>;
@@ -392,12 +313,6 @@
 	non-removable;
 	mmc-pwrseq = <&sdio_pwrseq>;
 	sd-uhs-sdr104;
-	status = "okay";
-};
-
-&tsadc {
-	rockchip,hw-tshut-mode = <0>; /* tshut mode 0:CRU 1:GPIO */
-	rockchip,hw-tshut-polarity = <1>; /* tshut polarity 0:LOW 1:HIGH */
 	status = "okay";
 };
 
