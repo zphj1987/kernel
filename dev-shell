@@ -1,0 +1,26 @@
+#!/bin/bash
+
+CURDIR="$PWD"
+
+case $(uname -s) in
+  Linux)
+    echo "Building Docker environment..."
+    docker build -q -t build-docker:build-kernel docker/
+    echo "Enter Docker container..."
+    exec docker run \
+      --rm \
+      -it \
+      -e HOME -v "${HOME}:${HOME}" \
+      --privileged \
+      -h build-env \
+      -v "${CURDIR}:${CURDIR}" \
+      -w "${CURDIR}" \
+      build-docker:build-kernel \
+      "$@"
+    ;;
+
+  *)
+    echo "Not supported: $(uname -s)"
+    exit 1
+  ;;
+esac
