@@ -1,6 +1,7 @@
 # Overlays for the ROCK PI S platform
 
 dtbo-$(CONFIG_ARCH_ROCKCHIP) += \
+	console-on-ttyS0.dtbo \
 	console-on-ttyS2.dtbo
 
 targets += dtbs dtbs_install
