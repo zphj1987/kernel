@@ -68,6 +68,11 @@ node {
                     --file "$file"
                 done
 
+                github-release upload \
+                  --tag "${RELEASE_NAME}" \
+                  --name "rockpis-dtbo.tar.gz" \
+                  --file "../rockpis-dtbo.tar.gz"
+
                 github-release edit \
                   --tag "${RELEASE_NAME}" \
                   --name "${RELEASE_TITLE}" \
