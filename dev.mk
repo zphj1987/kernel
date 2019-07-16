@@ -30,3 +30,7 @@ info: .config .scmversion
 .PHONY: kernel-package
 kernel-package: .config .scmversion
 	LOCALVERSION=$(shell cat .scmversion) KDEB_PKGVERSION=$(KDEB_PKGVERSION) $(KERNEL_MAKE) bindeb-pkg -j$$(nproc)
+
+.PHONY: rockpis-dtbo-package
+rockpis-dtbo-package:
+	./dev-packages -p rockpis-dtbo
