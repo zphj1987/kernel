@@ -1,0 +1,26 @@
+#!/bin/bash -e
+
+LOCALPATH=$(pwd)
+OVERLAYS_ROCKPIS="${LOCALPATH}/arch/arm64/boot/dts/rockchip/overlays-rockpis"
+
+while getopts "p:h" flag; do
+    case $flag in
+        p)
+            PACKAGE_NAME="$OPTARG"
+            ;;
+    esac
+done
+
+if [[ "$PACKAGE_NAME" == "rockpis-dtbo" ]]; then
+    cd ${LOCALPATH}/
+    mkdir -p ${LOCALPATH}/rockpis-dtbo/boot/overlays
+    cp ${OVERLAYS_ROCKPIS}/hw_intfc.conf ${LOCALPATH}/rockpis-dtbo/boot
+    cp ${OVERLAYS_ROCKPIS}/README ${LOCALPATH}/rockpis-dtbo/boot/overlays
+    cp ${OVERLAYS_ROCKPIS}/*.dtbo ${LOCALPATH}/rockpis-dtbo/boot/overlays
+
+    tar zcvf ${LOCALPATH}/rockpis-dtbo.tar.gz ${LOCALPATH}/rockpis-dtbo
+    mv ${LOCALPATH}/rockpis-dtbo.tar.gz ..
+    rm -rf ${LOCALPATH}/rockpis-dtbo
+    cd -
+fi
+

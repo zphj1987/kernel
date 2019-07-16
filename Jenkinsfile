@@ -41,6 +41,7 @@ node {
 
                 make distclean
                 ./dev-make kernel-package
+                ./dev-make rockpis-dtbo-package
               '''
             }
 
@@ -73,6 +74,7 @@ node {
                   --description "${DESCRIPTION}"
 
                 rm ../*$(./dev-make info)*.deb
+                rm ../rockpis-dtbo.tar.gz
               '''
             }
         }
