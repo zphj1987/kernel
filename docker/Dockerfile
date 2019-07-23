@@ -20,6 +20,9 @@ RUN apt-get update -y && \
 RUN curl -L https://github.com/aktau/github-release/releases/download/v0.7.2/linux-amd64-github-release.tar.bz2 | tar -C /tmp -jx && \
     mv /tmp/bin/linux/amd64/github-release /usr/local/bin/
 
+RUN wget -4 https://releases.linaro.org/components/toolchain/binaries/7.3-2018.05/aarch64-linux-gnu/gcc-linaro-7.3.1-2018.05-x86_64_aarch64-linux-gnu.tar.xz && \
+	tar -xvJf gcc-linaro-7.3.1-2018.05-x86_64_aarch64-linux-gnu.tar.xz -C /usr/local && rm gcc-linaro-7.3.1-2018.05-x86_64_aarch64-linux-gnu.tar.xz
+
 ENV USER=root \
     HOME=/root
 
