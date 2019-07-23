@@ -5,7 +5,7 @@ CURDIR="$PWD"
 case $(uname -s) in
   Linux)
     echo "Building Docker environment..."
-    docker build -q -t build-docker:build-kernel docker/
+    docker build -q -t linux-build-docker:latest docker/
     echo "Enter Docker container..."
     exec docker run \
       --rm \
@@ -15,7 +15,7 @@ case $(uname -s) in
       -h build-env \
       -v "${CURDIR}:${CURDIR}" \
       -w "${CURDIR}" \
-      build-docker:build-kernel \
+      linux-build-docker:latest \
       "$@"
     ;;
 

@@ -16,7 +16,7 @@ node {
       stage "Environment"
       checkout scm
 
-      def environment = docker.build('build-environment:build-kernel', 'docker')
+      def environment = docker.build('linux-build-docker:latest', 'docker')
 
       environment.inside("--privileged -u 0:0") {
         withEnv([
@@ -27,14 +27,6 @@ node {
           "GITHUB_USER=$GITHUB_USER",
           "GITHUB_REPO=$GITHUB_REPO",
         ]) {
-            stage ('Environment') {
-              sh '''#!/bin/bash
-                set -xe
-
-                tar xvf ./gcc-linaro-7.3.1-2018.05-x86_64_aarch64-linux-gnu.tar -C /usr/local/
-              '''
-              }
-
             stage ('Package') {
               sh '''#!/bin/bash
                 set -xe
@@ -52,7 +44,7 @@ node {
 
                 export RELEASE_NAME="$(./dev-make version)"
                 export RELEASE_TITLE="$(./dev-make version)"
-                export DESCRIPTION=" "
+                export DESCRIPTION="Linux packages for ROCK Pi S board"
 
                 github-release release \
                   --target ${RELEASE_REPO_BRANCH} \
