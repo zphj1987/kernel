@@ -34,6 +34,14 @@ The Overlay and Parameter Reference
 N.B. When editing this file, please preserve the indentation levels to make it
 simple to parse programmatically. NO HARD TABS.
 
+Name:	i2c0
+Info:	Overlay for BUS I2C0
+Load:	intfc:i2c0=<value>
+Value:
+		on		Set to "on" to enable the i2c0 interface (default "off")
+		off		Set to "off" to disable the i2c0 interface
+
+
 Name:	i2c1
 Info:	Overlay for BUS I2C1
 Load:	intfc:i2c1=<value>
@@ -56,14 +64,6 @@ Load:	intfc:i2c3=<value>
 Value:
 		on		Set to "on" to enable the i2c3 interface (default "off")
 		off		Set to "off" to disable the i2c3 interface
-
-
-Name:	i2c4
-Info:	Overlay for BUS I2C4
-Load:	intfc:i2c4=<value>
-Value:
-		on		Set to "on" to enable the i2c4 interface (default "off")
-		off		Set to "off" to disable the i2c4 interface
 
 
 Name:	pwm1
@@ -134,8 +134,20 @@ N.B. It is recommended to only ebable those bus interfaces that are needed.
 Leaving all interfaces enabled can lead to unwanted behaviour.
 
 
-Name:   console-on-ttyS2.dtbo
+Name:   console-on-ttyS0.dtbo
 Info:   By default, fiq debugger console is disabled.
         When this dtbo file is loaded, Rock Pi S enables fiq debugger console.
-        ttyS2 Pins will output console information.
-Load:   intfc:dtoverlay=console-on-ttyS2
+        ttyS0 Pins will output console information.
+Load:   intfc:dtoverlay=console-on-ttyS0
+
+
+Name:   spi2-waveshare35b-v2
+Info:   Overlay for activation of waveshare 3.5inch lcd(B v2).
+        Need set: intfc:uart1=off intfc:uart2=off intfc:i2c0=off intfc:spi2=on
+Load:   intfc:dtoverlay=spi2-0waveshare35b-v2
+
+
+Name:   spi2-waveshare35c
+Info:   Overlay for activation of waveshare 3.5inch lcd(C).
+        Need set: intfc:uart1=off intfc:uart2=off intfc:i2c0=off intfc:spi2=on
+Load:   intfc:dtoverlay=spi2-waveshare35c
