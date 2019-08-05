@@ -20,7 +20,7 @@
 
 		__overlay__ {
 			waveshare35b_v2_pins_2: waveshare35b_v2_pins_2 {
-				rockchip,pins = <2 14 0 &pcfg_pull_none>;
+				rockchip,pins = <2 9 0 &pcfg_pull_none>;
 			};
 		};
 	};
