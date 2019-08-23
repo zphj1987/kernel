@@ -185,6 +185,15 @@
 			default-state = "on";
 		};
 	};
+
+	acodec_sound: acodec-sound {
+		compatible = "rockchip,multicodecs-card";
+		rockchip,card-name = "rockchip,rk3308-acodec";
+		rockchip,codec-hp-det;
+		rockchip,mclk-fs = <256>;
+		rockchip,cpu = <&i2s_8ch_2>;
+		rockchip,codec = <&acodec>;
+     };
 };
 
 &cpu0 {
@@ -245,11 +254,8 @@
 	vccio5-supply = <&vcc_io>;
 };
 
-&i2s_8ch_0 {
+&i2s_8ch_2 {
 	status = "okay";
-	assigned-clocks = <&cru SCLK_I2S0_8CH_RX>;
-	assigned-clock-parents = <&cru SCLK_I2S0_8CH_TX_MUX>;
-	rockchip,clk-trcm = <1>;
 	#sound-dai-cells = <0>;
 };
 
@@ -346,5 +352,9 @@
 };
 
 &usb_host0_ohci{
+	status = "okay";
+};
+
+&acodec {
 	status = "okay";
 };
