@@ -2277,9 +2277,14 @@ vop_crtc_mode_valid(struct drm_crtc *crtc, const struct drm_display_mode *mode,
 	 */
 	if (output_type == DRM_MODE_CONNECTOR_HDMIA ||
 	    output_type == DRM_MODE_CONNECTOR_DisplayPort)
-		if (clock != request_clock)
+		if (clock != request_clock) {
+			if((strcmp(mode->name,"2560x1440") == 0 && (mode->clock == 241500)) \
+				|| (strcmp(mode->name,"3840x2160") == 0 && (mode->clock == 533250)) \
+				)
+				return MODE_OK;
+			//printk("vop_crtc_mode_valid newmode->name=%s,newmode->clock=%d\n",mode->name,mode->clock);
 			return MODE_CLOCK_RANGE;
-
+		}
 	return MODE_OK;
 }
 
