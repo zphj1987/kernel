@@ -99,10 +99,16 @@
 
 &io_domains {
 	status = "okay";
-
-	flash0-supply = <&vcc_18>;
-	sdcard-supply = <&vccio_sd>;
-	wifi-supply = <&vcc_18>;
+    audio-supply = <&vcc_18>;
+    bb-supply = <&vcc_io>;
+    dvp-supply = <&vcc_18>;
+    flash0-supply = <&vcc_flash>;
+    flash1-supply = <&vcc_io>;
+    gpio30-supply = <&vcc_io>;
+    gpio1830 = <&vcc_18>;
+    lcdc-supply = <&vcc_lcd>;
+    sdcard-supply = <&vccio_sd>;
+    wifi-supply = <&vcc_wl>;
 };
 
 &cpu0 {
