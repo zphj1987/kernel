@@ -153,14 +153,16 @@ Info:   Overlay for activation of waveshare 3.5inch lcd(C).
 Load:   intfc:dtoverlay=spi2-waveshare35c
 
 Name:   devspi0
-Info:   Overlay for activation of dummy spi device on SPI0 for test.
+Info:   Overlay for activation of dummy spi device on SPI0 for userspace access
+        such as libmraa.
         Need set: intfc:spi0=on
         By default, spi0 is disabled.
         when use spi0, uart0 must be disabled.
 Load:   intfc:dtoverlay=devspi0
 
 Name:   devspi2
-Info:   Overlay for activation of dummy spi device on SPI2 for test.
+Info:   Overlay for activation of dummy spi device on SPI2 for userspace access
+        such as libmraa.
         Need set: intfc:spi2=on
         By default, spi2 is disabled.
         when use spi2, uart2 must be disabled.
