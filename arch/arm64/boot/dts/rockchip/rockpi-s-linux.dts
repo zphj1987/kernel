@@ -364,3 +364,9 @@
 &acodec {
 	status = "okay";
 };
+
+&thermal_zones {
+	soc_thermal {
+		thermal-sensors = <&tsadc 0>;
+	};
+};
