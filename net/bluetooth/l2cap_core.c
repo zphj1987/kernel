@@ -598,8 +598,12 @@ void l2cap_chan_del(struct l2cap_chan *chan, int err)
 		 * FLAG_HOLD_HCI_CONN flag.
 		 */
 		if (chan->chan_type != L2CAP_CHAN_FIXED ||
-		    test_bit(FLAG_HOLD_HCI_CONN, &chan->flags))
+		    test_bit(FLAG_HOLD_HCI_CONN, &chan->flags)) {
+			if (test_bit(FLAG_HOLD_HCI_CONN, &chan->flags) &&
+			    conn->hcon)
+				conn->hcon->disc_timeout = 0;
 			hci_conn_drop(conn->hcon);
+		}
 
 		if (mgr && mgr->bredr_chan == chan)
 			mgr->bredr_chan = NULL;
@@ -1484,25 +1488,6 @@ static void l2cap_le_conn_ready(struct l2cap_conn *conn)
 	 */
 	if (hcon->out)
 		smp_conn_security(hcon, hcon->pending_sec_level);
-
-	/* For LE slave connections, make sure the connection interval
-	 * is in the range of the minium and maximum interval that has
-	 * been configured for this connection. If not, then trigger
-	 * the connection update procedure.
-	 */
-	if (hcon->role == HCI_ROLE_SLAVE &&
-	    (hcon->le_conn_interval < hcon->le_conn_min_interval ||
-	     hcon->le_conn_interval > hcon->le_conn_max_interval)) {
-		struct l2cap_conn_param_update_req req;
-
-		req.min = cpu_to_le16(hcon->le_conn_min_interval);
-		req.max = cpu_to_le16(hcon->le_conn_max_interval);
-		req.latency = cpu_to_le16(hcon->le_conn_latency);
-		req.to_multiplier = cpu_to_le16(hcon->le_supv_timeout);
-
-		l2cap_send_cmd(conn, l2cap_get_ident(conn),
-			       L2CAP_CONN_PARAM_UPDATE_REQ, sizeof(req), &req);
-	}
 }
 
 static void l2cap_conn_ready(struct l2cap_conn *conn)
