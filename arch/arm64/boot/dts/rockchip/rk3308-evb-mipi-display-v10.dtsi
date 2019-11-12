@@ -46,22 +46,6 @@
 			248 249 250 251 252 253 254 255>;
 		default-brightness-level = <200>;
 	};
-	vcc3v3_lcd: vcc3v3-lcd {
-		compatible = "regulator-gpio";
-
-		regulator-name = "vcc3v3_lcd";
-		pinctrl-names = "default";
-		pinctrl-0 = <&lcd_en>;
-
-                enable-gpio = <&gpio2 RK_PB3 GPIO_ACTIVE_LOW>;
-//		enable-active-high;
-                states = <0000000 0x1
-                          3300000 0x0>;
-
-//              regulator-always-on;    // TODO: for bringup???
-//              regulator-boot-on;      // TODO: for bringup???
-
-        };
 };
 
 &i2c0 {
@@ -138,7 +122,7 @@
 			panel@0 {
 				compatible = "sitronix,st7703", "simple-panel-dsi";
 				reg = <0>;
-				power-supply = <&vcc3v3_lcd>;
+				enable-gpio = <&gpio2 RK_PB3 GPIO_ACTIVE_LOW>;
 				backlight = <&backlight>;
 				prepare-delay-ms = <2>;
 				reset-delay-ms = <1>;
@@ -208,7 +192,7 @@
 					native-mode = <&timing1>;
 
 					timing1: timing1 {
-						clock-frequency = <50000000>;
+						clock-frequency = <64000000>;
 						hactive = <720>;
 						vactive = <1280>;
 						hfront-porch = <40>;
