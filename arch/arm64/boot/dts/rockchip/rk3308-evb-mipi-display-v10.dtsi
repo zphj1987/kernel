@@ -253,7 +253,8 @@
 };
 
 &route_rgb {
-	//status = "okay";
+	logo,kernel = "logo_kernel.bmp";
+	status = "okay";
 };
 
 &vop {
