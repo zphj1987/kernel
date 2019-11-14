@@ -91,7 +91,6 @@
 	acodec_sound: acodec-sound {
 		compatible = "rockchip,multicodecs-card";
 		rockchip,card-name = "rockchip,rk3308-acodec";
-		rockchip,codec-hp-det;
 		rockchip,mclk-fs = <256>;
 		rockchip,cpu = <&i2s_8ch_2>;
 		rockchip,codec = <&acodec>;
@@ -125,7 +124,6 @@
 		status = "okay";
 		compatible = "rockchip,multicodecs-card";
 		rockchip,card-name = "rockchip,rk3308-vad";
-		rockchip,codec-hp-det;
 		rockchip,cpu = <&i2s_8ch_2>;
 		rockchip,codec = <&acodec>, <&vad>;
 	};
