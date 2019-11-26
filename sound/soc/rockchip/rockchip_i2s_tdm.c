@@ -44,8 +44,6 @@ struct rk_i2s_soc_data {
 	u32 softrst_offset;
 	u32 grf_reg_offset;
 	u32 grf_shift;
-	int tx_reset_id;
-	int rx_reset_id;
 	int config_count;
 	const struct txrx_config *configs;
 	int (*init)(struct device *dev, u32 addr);
@@ -88,6 +86,8 @@ struct rk_i2s_tdm_dev {
 	unsigned int clk_trcm;
 	unsigned int i2s_sdis[CH_GRP_MAX];
 	unsigned int i2s_sdos[CH_GRP_MAX];
+	int tx_reset_id;
+	int rx_reset_id;
 	atomic_t refcount;
 	spinlock_t lock; /* xfer lock */
 };
@@ -265,10 +265,16 @@ static void rockchip_snd_xfer_sync_reset(struct rk_i2s_tdm_dev *i2s_tdm)
 	if (!i2s_tdm->cru_base || !i2s_tdm->soc_data)
 		return;
 
+<<<<<<< HEAD   (5a08c6 ASoC: rockchip: i2s_tdm: add support handle 'io-multiplex' p)
 	tx_id = i2s_tdm->soc_data->tx_reset_id;
 	rx_id = i2s_tdm->soc_data->rx_reset_id;
 	if (tx_id < 0 || rx_id < 0) {
 		dev_err(i2s_tdm->dev, "invalid reset id\n");
+=======
+	tx_id = i2s_tdm->tx_reset_id;
+	rx_id = i2s_tdm->rx_reset_id;
+	if (tx_id < 0 || rx_id < 0)
+>>>>>>> CHANGE (c4ad35 ASoC: rockchip: i2s_tdm: Fix wrong reset id)
 		return;
 	}
 
@@ -1508,12 +1514,17 @@ static int rockchip_i2s_tdm_probe(struct platform_device *pdev)
 		if (!i2s_tdm->cru_base)
 			return -ENOENT;
 
+<<<<<<< HEAD   (5a08c6 ASoC: rockchip: i2s_tdm: add support handle 'io-multiplex' p)
 		i2s_tdm->soc_data->tx_reset_id = of_i2s_resetid_get(node, "tx-m");
 		if (i2s_tdm->soc_data->tx_reset_id < 0)
 			return -EINVAL;
 		i2s_tdm->soc_data->rx_reset_id = of_i2s_resetid_get(node, "rx-m");
 		if (i2s_tdm->soc_data->rx_reset_id < 0)
 			return -EINVAL;
+=======
+		i2s_tdm->tx_reset_id = of_i2s_resetid_get(node, "tx-m");
+		i2s_tdm->rx_reset_id = of_i2s_resetid_get(node, "rx-m");
+>>>>>>> CHANGE (c4ad35 ASoC: rockchip: i2s_tdm: Fix wrong reset id)
 	}
 
 	i2s_tdm->tx_reset = devm_reset_control_get(&pdev->dev, "tx-m");
