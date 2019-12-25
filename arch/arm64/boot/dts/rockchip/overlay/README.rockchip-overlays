@@ -1,0 +1,109 @@
+## Introduction
+
+This document describes overlays provided in the kernel packages.
+For generic device tree overlays documentation please see
+https://wiki.radxa.com/Device-tree-overlays
+
+## Platform and Chips:
+
+rockchip (Rockchip)
+- rk3399pro
+
+## Overlays provided:
+
+### rk3399pro overlay details:
+
+- rk3399pro-i2c2, rk3399pro-i2c6, rk3399pro-i2c7
+- rk3399pro-spi-spidev
+- rk3399pro-pwm0, rk3399pro-pwm1
+- rk3399pro-uart2, rk3399pro-uart4
+- rk3399pro-console-on-uart2, rk3399pro-console-on-uart4
+
+#### rk3399pro Overlay details:
+
+#### rk3399pro-i2c2
+
+Activates I2C bus 2
+
+I2C2 pins (SCL, SDA): GPIO2_A1, GPIO2_A0
+
+#### rk3399pro-i2c6
+
+Activates I2C bus 6
+
+I2C7 pins (SCL, SDA): GPIO2_B2, GPIO2_A1
+
+#### rk3399pro-i2c7
+
+Activates I2C bus 7
+
+I2C7 pins (SCL, SDA): GPIO2_B0, GPIO2_A7
+
+#### rk3399pro-spi-spidev
+
+Activates SPIdev device node (/dev/spidevX.Y) for userspace SPI access,
+where X is the bus number and Y is the CS number
+
+SPI 1 pins (MOSI, MISO, SCK, CS): GPIO1_B0, GPIO1_A7, GPIO1_B1, GPIO1_B2
+
+Parameters:
+
+param_spidev_spi_bus (int)
+    SPI bus to activate SPIdev support on
+    Required
+    Supported values: 0, 1
+
+param_spidev_spi_cs (int)
+    SPI chip select number
+    Optional
+    Default: 0
+    Supported values: 0, 1
+    Using chip select 1 requires using "spi-add-cs1" overlay
+
+param_spidev_max_freq (int)
+    Maximum SPIdev frequency
+    Optional
+    Default: 10000000
+    Range: 3000 - 100000000
+
+#### rk3399pro-pwm0
+
+Activates PWM0
+
+#### rk3399pro-pwm1
+
+Activates PWM1
+
+#### rk3399pro-uart2
+
+Activates UART2
+
+UART2 pins (RXD, TXD): GPIO4_C3, GPIO4_C4
+
+Notice: rk3399pro-uart2 and rk3399pro-console-on-uart2 cannnot be added together
+in /boot/uEnv.txt.
+
+#### rk3399pro-uart4
+
+Activates UART4
+
+UART4 pins (RXD, TXD): GPIO1_A7, GPIO1_B0
+
+Notice: UART4 cannot be activated together with SPI1 since they share the same pins.
+Also, rk3399pro-uart4 and rk3399pro-console-on-uart4 cannnot be added together
+in /boot/uEnv.txt.
+
+#### rk3399pro-console-on-uart2
+
+Activates debug console on UART2
+
+Notice: rk3399pro-console-on-uart2 and rk3399pro-uart2 cannnot be added together
+in /boot/uEnv.txt.
+
+#### rk3399pro-console-on-uart4
+
+Activates debug console on UART4
+
+Notice: rk3399pro-console-on-uart4 and rk3399pro-uart4 cannnot be added together
+in /boot/uEnv.txt.
+
