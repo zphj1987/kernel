@@ -6,12 +6,13 @@
 #include "rk3399-linux.dtsi"
 
 / {
-	compatible = "rockchip,rk3399pro-ficus2-linux", "rockchip,rk3399pro";
+	model = "Radxa ROCK Pi N10";
+	compatible = "radxa,rk3399pro-rockpin10", "rockchip,rk3399pro";
 	/delete-node/ chosen;
 	/delete-node/ rk809-sound;
 
 	backlight: backlight {
-		status = "okay";
+		status = "disabled";
 		compatible = "pwm-backlight";
 		pwms = <&pwm0 0 25000 0>;
 		brightness-levels = <
@@ -70,6 +71,7 @@
 		pinctrl-names = "default";
 		pinctrl-0 = <&uart2c_xfer>;
 		interrupts = <GIC_SPI 150 IRQ_TYPE_LEVEL_HIGH 0>;
+		status = "disabled";
 	};
 
 	panel: panel {
@@ -108,14 +110,14 @@
 		};
 	};
 
-    rk_headset {
-        status = "okay";
-        compatible = "rockchip_headset";
-        headset_gpio = <&gpio2 RK_PB4 GPIO_ACTIVE_HIGH>;
-        pinctrl-names = "default";
-        pinctrl-0 = <&hp_det>;
-        io-channels = <&saradc 0>;
-    };
+	rk_headset {
+		status = "okay";
+		compatible = "rockchip_headset";
+		headset_gpio = <&gpio2 RK_PB4 GPIO_ACTIVE_HIGH>;
+		pinctrl-names = "default";
+		pinctrl-0 = <&hp_det>;
+		io-channels = <&saradc 0>;
+	};
 
 	es8316-sound {
 		status = "okay";
@@ -271,7 +273,7 @@
 };
 
 &edp_in_vopl {
-	status = "okay";
+	status = "disable";
 };
 
 &pcie_phy {
@@ -315,6 +317,18 @@
 	status = "okay";
 	i2c-scl-rising-time-ns = <140>;
 	i2c-scl-falling-time-ns = <30>;
+
+	rockpi_mcu: rockpi_mcu@45 {
+		compatible = "rockpi_mcu";
+		reg = <0x45>;
+		status = "disabled";
+	};
+
+	rockpi_ft5406: rockpi_ft5406@38 {
+		compatible = "rockpi_ft5406";
+		reg = <0x38>;
+		status = "disabled";
+	};
 };
 
 &rk809_rtc {
@@ -405,7 +419,7 @@
 };
 
 &pwm0 {
-	status = "okay";
+	status = "disabled";
 };
 
 &pwm2 {
@@ -562,7 +576,7 @@
 };
 
 &route_edp {
-	status = "okay";
+	status = "disabled";
 };
 
 &saradc {
@@ -649,6 +663,23 @@
 	status = "okay";
 };
 
+&dsi {
+	status = "disabled";
+
+	panel_0: panel@0 {
+		compatible ="rockpi,tc358762";
+		reg = <0>;
+		status = "okay";
+	};
+};
+
+&dsi_in_vopl {
+	status = "disabled";
+};
+
+&dsi_in_vopb {
+	status = "disabled";
+};
 
 &pinctrl {
 	pinctrl-names = "default";
@@ -682,17 +713,10 @@
 		};
 	};
 
-    headphone {
+	headphone {
 		hp_det: hp-det {
 			rockchip,pins =
 				<2 RK_PB4 0 &pcfg_pull_none>;
-		};
-	};
-
-	lcd_rst {
-		lcd_rst_gpio: lcd-rst-gpio {
-			rockchip,pins =
-				<3 RK_PA4 0 &pcfg_pull_none>;
 		};
 	};
 
@@ -767,6 +791,13 @@
 		pwm3a_pin: pwm3a-pin {
 			rockchip,pins =
 				<0 RK_PA6 RK_FUNC_1 &pcfg_pull_none>;
+		};
+	};
+
+	lcd {
+		lcd_rst_gpio: lcd-rst-gpio {
+			rockchip,pins =
+				<4 27 RK_FUNC_GPIO &pcfg_pull_none>;// eDP
 		};
 	};
 
