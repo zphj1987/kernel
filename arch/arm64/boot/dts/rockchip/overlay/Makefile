@@ -3,8 +3,8 @@ dtbo-$(CONFIG_ARCH_ROCKCHIP) += \
 	rk3399pro-i2c2.dtbo \
 	rk3399pro-i2c6.dtbo \
 	rk3399pro-i2c7.dtbo \
-	rk3399pro-console-on-uart2.dtb \
-	rk3399pro-console-on-uart4.dtb \
+	rk3399pro-console-on-uart2.dtbo \
+	rk3399pro-console-on-uart4.dtbo \
 	rk3399pro-uart2.dtbo \
 	rk3399pro-uart4.dtbo \
 	rk3399pro-pwm0.dtbo \
