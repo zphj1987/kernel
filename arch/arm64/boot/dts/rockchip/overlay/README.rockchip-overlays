@@ -9,23 +9,39 @@ https://wiki.radxa.com/Device-tree-overlays
 rockchip (Rockchip)
 - rk3399pro
 
-## Overlays provided:
+#### usage
 
-### rk3399pro overlay details:
+Kernel provided DT overlay files are in
+  /boot/dtbs/$(uname -r)/rockchip/overlay/
+
+/boot/uEnv.txt contents:
+
+overlays=rk3399pro-i2c2 rk3399pro-console-on-uart2 rk3399pro-pwm0 rk3399pro-w1-gpio rk3399pro-spi-spidev
+param_spidev_spi_bus=1
+param_spidev_max_freq=10000000
+param_w1_pin=GPIO2_A2
+
+Add names of overlays you want to activate to overlays= line in /boot/uEnv.txt, separated with spaces.
+Add required parameters with their values to /boot/uEnv.txt, one per line.
+Add optional parameters with their values to /boot/uEnv.txt if you want to change the default value, one per line.
+
+#### rk3399pro Overlay details:
 
 - rk3399pro-i2c2, rk3399pro-i2c6, rk3399pro-i2c7
 - rk3399pro-spi-spidev
 - rk3399pro-pwm0, rk3399pro-pwm1
 - rk3399pro-uart2, rk3399pro-uart4
 - rk3399pro-console-on-uart2, rk3399pro-console-on-uart4
-
-#### rk3399pro Overlay details:
+- rk3399pro-w1-gpio
 
 #### rk3399pro-i2c2
 
 Activates I2C bus 2
 
 I2C2 pins (SCL, SDA): GPIO2_A1, GPIO2_A0
+
+Usage: add one line in /boot/uEnv.txt
+overlays=rk3399pro-i2c2
 
 #### rk3399pro-i2c6
 
@@ -76,7 +92,7 @@ Activates PWM1
 
 #### rk3399pro-uart2
 
-Activates UART2
+Activates serial port 2 (/dev/ttyS2)
 
 UART2 pins (RXD, TXD): GPIO4_C3, GPIO4_C4
 
@@ -85,7 +101,7 @@ in /boot/uEnv.txt.
 
 #### rk3399pro-uart4
 
-Activates UART4
+Activates serial port 4 (/dev/ttyS4)
 
 UART4 pins (RXD, TXD): GPIO1_A7, GPIO1_B0
 
@@ -97,6 +113,8 @@ in /boot/uEnv.txt.
 
 Activates debug console on UART2
 
+console pins (RXD, TXD): GPIO4_C3, GPIO4_C4
+
 Notice: rk3399pro-console-on-uart2 and rk3399pro-uart2 cannnot be added together
 in /boot/uEnv.txt.
 
@@ -104,6 +122,21 @@ in /boot/uEnv.txt.
 
 Activates debug console on UART4
 
+console pins (RXD, TXD): GPIO1_A7, GPIO1_B0
+
 Notice: rk3399pro-console-on-uart4 and rk3399pro-uart4 cannnot be added together
 in /boot/uEnv.txt.
+
+#### rk3399pro-w1-gpio
+
+Activates 1-Wire GPIO master
+
+Requires an external pull-up resistor on the data pin
+
+Parameters:
+
+param_w1_pin (pin)
+	Data pin for 1-Wire master
+	Optional
+	Default: GPIO2_A2
 
