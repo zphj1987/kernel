@@ -9,7 +9,8 @@ dtbo-$(CONFIG_ARCH_ROCKCHIP) += \
 	rk3399pro-uart4.dtbo \
 	rk3399pro-pwm0.dtbo \
 	rk3399pro-pwm1.dtbo \
-	rk3399pro-spi-spidev.dtbo
+	rk3399pro-spi-spidev.dtbo \
+	rk3399pro-w1-gpio.dtbo
 
 scr-$(CONFIG_ARCH_ROCKCHIP) += \
 	rockchip-fixup.scr
