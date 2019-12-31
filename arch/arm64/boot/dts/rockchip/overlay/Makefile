@@ -11,7 +11,8 @@ dtbo-$(CONFIG_ARCH_ROCKCHIP) += \
 	rk3399pro-pwm1.dtbo \
 	rk3399pro-spi-spidev.dtbo \
 	rk3399pro-w1-gpio.dtbo \
-	rk3399pro-raspberrypi-7-inch-lcd.dtbo
+	rk3399pro-raspberrypi-7-inch-lcd.dtbo \
+	rk3399pro-pcie-gen2.dtbo
 
 scr-$(CONFIG_ARCH_ROCKCHIP) += \
 	rockchip-fixup.scr

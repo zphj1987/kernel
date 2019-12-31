@@ -1,0 +1,13 @@
+/dts-v1/;
+/plugin/;
+
+/ {
+	compatible = "radxa,rk3399pro-rockpin10", "rockchip,rk3399pro";
+
+	fragment@0 {
+		target = <&pcie0>;
+		__overlay__ {
+			max-link-speed = <2>;
+		};
+	};
+};
