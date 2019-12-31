@@ -149,3 +149,7 @@ Notice: In term of hardware, use a 15-pin FPC cable to connect RPI LCD to ROCK P
 For power supply, both 5V pin and GND pin on 5-pin connector on RPI LCD are connected
 to the 40-pin connector on ROCK Pi N10.
 
+#### rk3399pro-pcie-gen2
+
+Activates PCIe Gen2 Mode
+
