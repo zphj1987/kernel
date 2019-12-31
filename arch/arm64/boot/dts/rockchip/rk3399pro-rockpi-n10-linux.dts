@@ -314,7 +314,7 @@
 };
 
 &i2c1 {
-	status = "okay";
+	status = "disabled";
 	i2c-scl-rising-time-ns = <140>;
 	i2c-scl-falling-time-ns = <30>;
 
@@ -669,7 +669,7 @@
 	panel_0: panel@0 {
 		compatible ="rockpi,tc358762";
 		reg = <0>;
-		status = "okay";
+		status = "disabled";
 	};
 };
 
