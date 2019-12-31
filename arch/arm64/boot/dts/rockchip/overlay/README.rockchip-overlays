@@ -140,3 +140,12 @@ param_w1_pin (pin)
 	Optional
 	Default: GPIO2_A2
 
+
+#### rk3399pro-raspberrypi-7-inch-lcd
+
+Activates Raspberry Pi 7-inch LCD
+
+Notice: In term of hardware, use a 15-pin FPC cable to connect RPI LCD to ROCK Pi N10.
+For power supply, both 5V pin and GND pin on 5-pin connector on RPI LCD are connected
+to the 40-pin connector on ROCK Pi N10.
+
