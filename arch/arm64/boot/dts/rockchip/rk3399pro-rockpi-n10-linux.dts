@@ -183,11 +183,6 @@
 		regulator-max-microvolt = <5000000>;
 	};
 
-	usbhub_reset: usbhub-reset {
-		compatible = "usbhub-reset";
-		uhrst-gpio = <&gpio4 29 GPIO_ACTIVE_HIGH>;
-	};
-
 	host_5v: host-5v {
 		compatible = "regulator-fixed";
 		enable-active-high;
@@ -273,7 +268,7 @@
 };
 
 &edp_in_vopl {
-	status = "disable";
+	status = "disabled";
 };
 
 &pcie_phy {
