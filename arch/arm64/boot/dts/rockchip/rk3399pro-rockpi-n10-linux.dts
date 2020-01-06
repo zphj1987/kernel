@@ -216,7 +216,7 @@
 		regulator-boot-on;
 	};
 
-	wireless-wlan {
+	wireless_wlan: wireless-wlan {
 		compatible = "wlan-platdata";
 		rockchip,grf = <&grf>;
 		wifi_chip_type = "ap6256";
@@ -225,7 +225,7 @@
 		status = "okay";
 	};
 
-	wireless-bluetooth {
+	bt_uart0: wireless_bluetooth: wireless-bluetooth {
 		compatible = "bluetooth-platdata";
 		uart_rts_gpios = <&gpio2 RK_PC3 GPIO_ACTIVE_LOW>;
 		pinctrl-names = "default", "rts_gpio";
