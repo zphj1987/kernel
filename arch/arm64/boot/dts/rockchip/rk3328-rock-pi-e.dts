@@ -48,7 +48,7 @@
 	model = "Radxa ROCK Pi E";
 	compatible = "radxa,rockpie", "rockchip,rk3328";
 
-	fiq-debugger {
+	fiq_debugger: fiq-debugger {
 		compatible = "rockchip,fiq-debugger";
 		rockchip,serial-id = <2>;
 		rockchip,signal-irq = <159>;
@@ -57,7 +57,7 @@
 		rockchip,irq-mode-enable = <0>;
 		rockchip,baudrate = <1500000>;  /* Only 115200 and 1500000 */
 		interrupts = <GIC_SPI 127 IRQ_TYPE_LEVEL_LOW>;
-		status = "okay";
+		status = "disabled";
 	};
 
 	gmac_clkin: external-gmac-clock {
