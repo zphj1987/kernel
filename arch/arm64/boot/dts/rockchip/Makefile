@@ -86,17 +86,6 @@ dtb-$(CONFIG_ARCH_ROCKCHIP) += rk3399-videostrong-linux.dtb
 dtb-$(CONFIG_ARCH_ROCKCHIP) += rk3399-vr-android.dtb
 dtb-$(CONFIG_ARCH_ROCKCHIP) += rockpi-s-linux.dtb
 
-targets += dtbs dtbs_instal
-targets += $(dtb-y)
-dtstree     := $(srctree)/$(src)
-dtb-$(CONFIG_OF_ALL_DTBS) := $(patsubst $(dtstree)/%.dts,%.dtb, $(wildcard $(dtstree)/*.dts))
-
 always		:= $(dtb-y)
-subdir-y	:= $(dts-dirs) overlays-rockpis
+subdir-y	:= $(dts-dirs)
 clean-files	:= *.dtb
-
-# Enable fixups to support overlays on ROCK Pi platforms
-ifeq ($(CONFIG_ARCH_ROCKCHIP),y)
-	DTC_FLAGS ?= -@ -H epapr
-	dts-dirs += overlays-rockpis
-endif
