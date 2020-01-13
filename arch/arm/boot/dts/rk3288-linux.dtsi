@@ -84,7 +84,7 @@
 		};
 	};
 
-	fiq-debugger {
+	fiq_debuger:fiq-debugger {
 		compatible = "rockchip,fiq-debugger";
 		interrupts = <GIC_SPI 153 IRQ_TYPE_LEVEL_HIGH>;
 		rockchip,serial-id = <2>;
