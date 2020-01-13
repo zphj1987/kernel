@@ -5,7 +5,10 @@ dtbo-$(CONFIG_ARCH_ROCKCHIP) += \
 	spi2-waveshare35c.dtbo \
 	spi2-waveshare35b-v2.dtbo \
 	devspi0.dtbo \
-	devspi2.dtbo
+	devspi2.dtbo \
+	rk3308-uart0.dtbo \
+	rk3308-uart1.dtbo \
+	rk3308-uart2.dtbo
 
 targets += dtbs dtbs_install
 targets += $(dtbo-y)
