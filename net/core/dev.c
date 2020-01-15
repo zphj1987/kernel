@@ -7062,6 +7062,8 @@ void netdev_run_todo(void)
 
 		if (dev->destructor)
 			dev->destructor(dev);
+		if (dev->needs_free_netdev)
+			free_netdev(dev);
 
 		/* Report a network device has been unregistered */
 		rtnl_lock();
