@@ -1752,6 +1752,7 @@ struct net_device {
 		RTNL_LINK_INITIALIZING,
 	} rtnl_link_state:16;
 
+	bool needs_free_netdev;
 	void (*destructor)(struct net_device *dev);
 
 #ifdef CONFIG_NETPOLL
