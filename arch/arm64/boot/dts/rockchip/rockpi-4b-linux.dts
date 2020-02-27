@@ -621,7 +621,7 @@
 	status = "okay";
 
 	camera0: camera0-module@10 {
-		status = "disabled";
+		status = "okay";
 		compatible = "sony,imx219";
 		reg = <0x10>;
 
@@ -632,7 +632,7 @@
 
 		rockchip,camera-module-index = <0>;
 		rockchip,camera-module-facing = "back";
-		rockchip,camera-module-name = "default";
+		rockchip,camera-module-name = "raspberry";
 		rockchip,camera-module-lens-name = "default";
 
 		port {
@@ -644,7 +644,7 @@
 	};
 
 	camera1: camera1-module@36 {
-		status = "okay";
+		status = "disabled";
 		compatible = "ovti,ov5647";
 		reg = <0x36>;
 
@@ -655,7 +655,7 @@
 
 		rockchip,camera-module-index = <0>;
 		rockchip,camera-module-facing = "back";
-		rockchip,camera-module-name = "default";
+		rockchip,camera-module-name = "raspberry";
 		rockchip,camera-module-lens-name = "default";
 
 		port {
@@ -678,7 +678,7 @@
 
 		rockchip,camera-module-index = <0>;
 		rockchip,camera-module-facing = "back";
-		rockchip,camera-module-name = "default";
+		rockchip,camera-module-name = "raspberry";
 		rockchip,camera-module-lens-name = "default";
 
 		port {
@@ -1127,8 +1127,8 @@
 
 			mipi_in_ucam0: endpoint@1 {
 				reg = <1>;
-				//remote-endpoint = <&ucam_out0>;
-				remote-endpoint = <&ucam_out1>;
+				remote-endpoint = <&ucam_out0>;
+				//remote-endpoint = <&ucam_out1>;
 				//remote-endpoint = <&ucam_out2>;
 				data-lanes = <1 2>;
 			};
