@@ -143,5 +143,5 @@ dtb-$(CONFIG_ARCH_ROCKCHIP) += rk3399pro-npu-evb-v10.dtb
 dtb-$(CONFIG_ARCH_ROCKCHIP) += rk3399pro-npu-evb-v10-multi-cam.dtb
 
 always		:= $(dtb-y)
-subdir-y	:= $(dts-dirs)
+subdir-y	:= $(dts-dirs) overlay
 clean-files	:= *.dtb
