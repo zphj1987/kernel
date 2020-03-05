@@ -16,6 +16,8 @@
 / {
 	compatible = "rockchip,rk3399pro-ficus2-linux", "rockchip,rk3399pro";
 
+	/delete-node/ chosen;
+
 	backlight: backlight {
 		compatible = "pwm-backlight";
 		pwms = <&pwm0 0 25000 0>;
