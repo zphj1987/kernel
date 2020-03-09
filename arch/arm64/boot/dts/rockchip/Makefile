@@ -124,6 +124,7 @@ dtb-$(CONFIG_ARCH_ROCKCHIP) += rk3399pro-evb-v11-multi-cam-avb.dtb
 dtb-$(CONFIG_ARCH_ROCKCHIP) += rk3399pro-evb-v13-multi-cam.dtb
 dtb-$(CONFIG_ARCH_ROCKCHIP) += rk3399pro-npu-evb-v10.dtb
 dtb-$(CONFIG_ARCH_ROCKCHIP) += rk3399pro-npu-evb-v10-multi-cam.dtb
+dtb-$(CONFIG_ARCH_ROCKCHIP) += rockpi-4b-linux.dtb
 
 always		:= $(dtb-y)
 subdir-y	:= $(dts-dirs) overlay
