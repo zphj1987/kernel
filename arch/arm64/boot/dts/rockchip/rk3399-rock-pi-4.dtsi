@@ -817,6 +817,7 @@
 	status = "okay";
 };
 
+/*
 &dsi {
 	status = "okay";
 };
@@ -829,7 +830,6 @@
     status = "disabled";
 };
 
-/*
 &dsi1 {
 	rockchip,dual-channel = <&dsi>;
 	status = "okay";
@@ -1135,6 +1135,7 @@
 	status = "okay";
 };
 
+/*
 &dsi1_in_vopl {
 	status = "okay";
 };
@@ -1151,6 +1152,7 @@
 	status = "okay";
 	connect = <&vopl_out_dsi1>;
 };
+*/
 
 &hdmi_in_vopl {
 	status = "disabled";
