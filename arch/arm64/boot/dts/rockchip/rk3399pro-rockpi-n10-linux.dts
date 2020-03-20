@@ -376,8 +376,8 @@
 
 		rockchip,camera-module-index = <0>;
 		rockchip,camera-module-facing = "back";
-		rockchip,camera-module-name = "imx219";
-		rockchip,camera-module-lens-name = "none";
+		rockchip,camera-module-name = "raspberry";
+		rockchip,camera-module-lens-name = "default";
 
 		port {
 			ucam_out0: endpoint {
@@ -685,7 +685,7 @@
 		cam_pwdn: cam-pwdn {
 			rockchip,pins =
 				<2 RK_PA5 0 &pcfg_pull_up>;
-		 };
+		};
 	};
 
 	bq2570 {
