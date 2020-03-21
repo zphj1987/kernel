@@ -370,3 +370,7 @@
 		thermal-sensors = <&tsadc 0>;
 	};
 };
+
+&wdt {
+	status = "okay";
+};
