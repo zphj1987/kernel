@@ -2,7 +2,7 @@
 /plugin/;
 
 / {
-	compatible = "radxa,rk3399pro-rockpin10", "rockchip,rk3399pro";
+	compatible = "rockchip,rk3399pro";
 
 	fragment@0 {
 		target-path = "/i2c@ff120000";

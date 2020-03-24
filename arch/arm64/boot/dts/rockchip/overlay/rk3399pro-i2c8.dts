@@ -5,7 +5,7 @@
 	compatible = "rockchip,rk3399pro";
 
 	fragment@0 {
-		target-path = "/i2c@ff160000";
+		target-path = "/i2c@ff3e0000";
 		__overlay__ {
 			status = "okay";
 		};
