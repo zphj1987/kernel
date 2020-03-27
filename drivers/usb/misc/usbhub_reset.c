@@ -73,7 +73,7 @@ static int uhrst_probe(struct platform_device *pdev)
 	}
 
 	ddata->uhrst_gpio = of_get_named_gpio_flags(node, "uhrst-gpio", 0, &flag);
-	if (uhrst_gpio < 0) {
+	if (ddata->uhrst_gpio < 0) {
 		printk("%s() Can not read property uhrst_gpio\n", __FUNCTION__);
 		ret = -EIO;
 		goto fail0;
