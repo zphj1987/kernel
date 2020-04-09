@@ -27,6 +27,7 @@ Add optional parameters with their values to /boot/uEnv.txt if you want to chang
 
 #### rk3308 Overlay details:
 
+- i2c1-hym8563
 - rk3308-i2c0, rk3308-i2c1, rk3308-i2c2, rk3308-i2c3
 - rk3308-spi-spidev
 - rk3308-uart0, rk3308-uart1, rk3308-uart2
@@ -43,6 +44,12 @@ Notes:
 5.SPI0 and UART0 cannot be enabled at the same time.
 6.SPI2 and UART2 cannot be enabled at the same time.
 7.Waveshare 3.5 inch LCD related pins on 40-PIN HEADER 1: PIN#11/18/19/21/22/23/24/26
+
+#### i2c1-hym8563
+
+Activates hym8563 RTC
+
+Related pins: I2C1(SCL/SDA), nINT(GPIO0_C1)
 
 #### rk3308-i2c0
 
