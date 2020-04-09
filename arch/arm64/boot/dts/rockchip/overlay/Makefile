@@ -1,5 +1,6 @@
 # SPDX-License-Identifier: GPL-2.0
 dtbo-$(CONFIG_ARCH_ROCKCHIP) += \
+	i2c1-hym8563.dtbo \
 	rk3308-console-on-uart0.dtbo \
 	rk3308-console-on-uart1.dtbo \
 	rk3308-console-on-uart2.dtbo \

@@ -1,0 +1,42 @@
+/dts-v1/;
+/plugin/;
+
+#include <dt-bindings/pinctrl/rockchip.h>
+#include <dt-bindings/interrupt-controller/arm-gic.h>
+
+/ {
+	compatible = "rockchip,rk3308";
+
+	fragment@0 {
+		target = <&pinctrl>;
+		__overlay__ {
+			rtc-hym8563 {
+				hym8563_int: hym8563-int {
+					rockchip,pins = <0 RK_PC1 RK_FUNC_GPIO &pcfg_pull_up>;
+				};
+			};
+		};
+	};
+
+	fragment@1 {
+		target = <&i2c1>;
+		__overlay__ {
+			status = "okay";
+			clock-frequency = <400000>;
+			#address-cells = <1>;
+			#size-cells = <0>;
+			hym8563: hym8563@51 {
+				compatible = "haoyu,hym8563";
+				reg = <0x51>;
+				#clock-cells = <0>;
+				clock-frequency = <32768>;
+				clock-output-names = "xin32k";
+				pinctrl-names = "default";
+				pinctrl-0 = <&hym8563_int>;
+				interrupt-parent = <&gpio0>;
+				interrupts = <17 IRQ_TYPE_LEVEL_LOW>;
+				status = "okay";
+			};
+		};
+	};
+};
