@@ -128,6 +128,18 @@
 		clock-output-names = "xin32k";
 		#clock-cells = <0>;
 	};
+
+	gpio-leds {
+		compatible = "gpio-leds";
+		status = "okay";
+
+		user-led {
+			label = "rockpie:user";
+			gpios = <&gpio3 5 GPIO_ACTIVE_LOW>;
+			linux,default-trigger = "heartbeat";
+			default-state = "on";
+		};
+	};
 };
 
 &io_domains {
