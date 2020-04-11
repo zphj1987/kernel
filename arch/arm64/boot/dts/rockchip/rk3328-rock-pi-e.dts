@@ -290,7 +290,7 @@
 		clock-output-names = "rk805-clkout1", "rk805-clkout2";
 
 		rtc {
-			status = "disabled";
+			status = "okay";
 		};
 
 		pwrkey {
@@ -476,5 +476,9 @@
 };
 
 &usbdrd_dwc3 {
+	status = "okay";
+};
+
+&wdt {
 	status = "okay";
 };
