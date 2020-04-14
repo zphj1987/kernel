@@ -12,8 +12,6 @@
 #include "rk3399-vop-clk-set.dtsi"
 
 / {
-	compatible = "rockchip,rk3399pro-ficus2-linux", "rockchip,rk3399pro";
-
 	clkin_gmac: external-gmac-clock {
 		compatible = "fixed-clock";
 		clock-frequency = <125000000>;
@@ -32,7 +30,7 @@
 		interrupts = <GIC_SPI 150 IRQ_TYPE_LEVEL_HIGH 0>;
 	};
 
-	rk809-sound {
+	rk809_sound: rk809-sound {
 		status = "disabled";
 		compatible = "simple-audio-card";
 		simple-audio-card,format = "i2s";
