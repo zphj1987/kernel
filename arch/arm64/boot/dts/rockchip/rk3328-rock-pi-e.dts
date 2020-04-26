@@ -436,14 +436,14 @@
 
 &u2phy {
 	status = "okay";
+};
 
-	u2phy_host: host-port {
-		status = "okay";
-	};
+&u2phy_host {
+	status = "okay";
+};
 
-	u2phy_otg: otg-port {
-		status = "okay";
-	};
+&u2phy_otg {
+	status = "okay";
 };
 
 &u3phy {
@@ -460,6 +460,7 @@
 };
 
 &usb20_otg {
+	dr_mode = "host";
 	status = "okay";
 };
 
@@ -481,4 +482,15 @@
 
 &wdt {
 	status = "okay";
+};
+
+&saradc {
+	status = "okay";
+	vref-supply = <&vdd_18>;
+};
+
+&tsadc {
+	status = "okay";
+	rockchip,hw-tshut-mode = <1>; /* tshut mode 0:CRU 1:GPIO */
+	rockchip,hw-tshut-polarity = <1>; /* tshut polarity 0:LOW 1:HIGH */
 };
