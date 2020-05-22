@@ -404,10 +404,6 @@
 	/delete-node/ codec;
 };
 
-&i2s1 {
-	status = "disabled";
-};
-
 &i2s2 {
 	#sound-dai-cells = <0>;
 	status = "okay";
