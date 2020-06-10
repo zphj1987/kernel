@@ -14,6 +14,7 @@ dtbo-$(CONFIG_ARCH_ROCKCHIP) += \
 	rk3308-uart0.dtbo \
 	rk3308-uart1.dtbo \
 	rk3308-uart2.dtbo \
+	rk3308-usb20-host.dtbo \
 	rk3308-spi-spidev.dtbo \
 	rk3308-w1-gpio.dtbo \
 	rockpis-v11-spi2-waveshare35b-v2.dtbo \
