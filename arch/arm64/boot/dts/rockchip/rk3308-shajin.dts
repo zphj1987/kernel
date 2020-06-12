@@ -1,0 +1,222 @@
+// SPDX-License-Identifier: (GPL-2.0+ OR MIT)
+/*
+ * Copyright (c) 2018 Fuzhou Rockchip Electronics Co., Ltd
+ */
+
+/dts-v1/;
+
+#include "rk3308-rock-pi-s-core-evb.dtsi"
+
+/ {
+	model = "Radxa Shajin";
+	compatible = "radxa,shajin", "rockchip,rk3308";
+
+	backlight: backlight {
+		status = "okay";
+		compatible = "pwm-backlight";
+		pwms = <&pwm3 0 25000 1>;
+		brightness-levels = <1 2 3 4 5 6>;
+		default-brightness-level = <4>;
+		enable-gpios = <&gpio0 RK_PC2 GPIO_ACTIVE_HIGH>;
+	};
+
+	panel: panel {
+		compatible = "simple-panel";
+		bus-format = <MEDIA_BUS_FMT_RGB666_1X18>;
+		backlight = <&backlight>;
+		enable-gpios = <&gpio0 RK_PB6 GPIO_ACTIVE_HIGH>;
+		enable-delay-ms = <20>;
+		reset-gpios = <&gpio0 RK_PC4 GPIO_ACTIVE_LOW>;
+		reset-delay-ms = <10>;
+		prepare-delay-ms = <20>;
+		unprepare-delay-ms = <20>;
+		disable-delay-ms = <20>;
+		width-mm = <108>;
+		height-mm = <64>;
+		status = "okay";
+
+		display-timings {
+			native-mode = <&hq050wvg001_timing>;
+
+			hq050wvg001_timing: timing0 {
+				clock-frequency = <30000000>;
+				hactive = <800>;
+				vactive = <480>;
+				hback-porch = <60>;
+				hfront-porch = <20>;
+				vback-porch = <28>;
+				vfront-porch = <20>;
+				hsync-len = <20>;
+				vsync-len = <20>;
+				hsync-active = <0>;
+				vsync-active = <0>;
+				de-active = <0>;
+				pixelclk-active = <0>;
+			};
+		};
+
+		port {
+			panel_in_rgb: endpoint {
+				remote-endpoint = <&rgb_out_panel>;
+			};
+		};
+	};
+
+	usbhub_reset: usbhub-reset {
+		compatible = "usbhub-reset";
+		uhrst-gpio = <&gpio0 RK_PB7 GPIO_ACTIVE_HIGH>;
+	};
+
+	vcc_host_vbus: vcc-host-vbus {
+		compatible = "regulator-fixed";
+		enable-active-high;
+		gpio = <&gpio0 RK_PC5 GPIO_ACTIVE_HIGH>;
+		pinctrl-names = "default";
+		pinctrl-0 = <&host_vbus_drv>;
+		regulator-name = "vcc_host_vbus";
+	};
+};
+
+&display_subsystem {
+	status = "okay";
+};
+
+&pwm3 {
+	status = "okay";
+};
+
+&rgb {
+	status = "okay";
+	pinctrl-names = "default";
+	pinctrl-0 = <&lcdc_ctl>;
+
+	ports {
+		rgb_out: port@1 {
+			reg = <1>;
+			#address-cells = <1>;
+			#size-cells = <0>;
+
+			rgb_out_panel: endpoint@0 {
+				reg = <0>;
+				remote-endpoint = <&panel_in_rgb>;
+			};
+		};
+	};
+};
+
+&route_rgb {
+	status = "okay";
+};
+
+&vop {
+	status = "okay";
+};
+
+&dmc {
+	center-supply = <&vdd_log>;
+	status = "okay";
+};
+
+&emmc {
+	status = "okay";
+};
+
+&sdmmc {
+	status = "okay";
+};
+
+&i2s_8ch_2 {
+	status = "okay";
+	#sound-dai-cells = <0>;
+};
+
+&u2phy {
+	status = "okay";
+
+	u2phy_host: host-port {
+		phy-supply = <&vcc_host_vbus>;
+		status = "okay";
+	};
+
+	u2phy_otg: otg-port {
+		vbus-supply = <&vcc_host_vbus>;
+		status = "okay";
+	};
+};
+
+&i2c1 {
+	status = "okay";
+	clock-frequency = <400000>;
+	#address-cells = <1>;
+	#size-cells = <0>;
+
+	hym8563: hym8563@51 {
+		compatible = "haoyu,hym8563";
+		reg = <0x51>;
+		#clock-cells = <0>;
+		clock-frequency = <32768>;
+		clock-output-names = "xin32k";
+		status = "okay";
+	};
+
+	gt9xx: gt9xx@5d {
+		status = "okay";
+		compatible = "goodix,gt9xx";
+		reg = <0x5d>;
+		touch-gpio = <&gpio0 RK_PB2 IRQ_TYPE_LEVEL_LOW>;
+		reset-gpio = <&gpio0 RK_PB1 GPIO_ACTIVE_HIGH>;
+		max-x = <800>;
+		max-y = <480>;
+		tp-size = <970>;
+	};
+};
+
+&i2c2 {
+	status = "okay";
+};
+
+&spi2 {
+	status = "okay";
+	#address-cells = <1>;
+	#size-cells = <0>;
+	max-freq = <50000000>;
+
+	devspi@0 {
+		compatible ="rockchip,spidev";
+		reg = <0>;
+		spi-max-frequency = <10000000>;
+		status = "okay";
+	};
+};
+
+&usb20_otg {
+	status = "okay";
+};
+
+&usb_host0_ehci {
+	status = "okay";
+};
+
+&usb_host0_ohci{
+	status = "okay";
+};
+
+&acodec {
+	status = "okay";
+};
+
+&wdt {
+	status = "okay";
+};
+
+&pinctrl {
+	usb {
+		host_vbus_drv: host-vbus-drv {
+			rockchip,pins = <0 RK_PC5 RK_FUNC_GPIO &pcfg_pull_none>;
+		};
+	};
+};
+
+/* DON'T PUT ANYTHING BELOW HERE.  PUT IT ABOVE PINCTRL */
+/* DON'T PUT ANYTHING BELOW HERE.  PUT IT ABOVE PINCTRL */
+/* DON'T PUT ANYTHING BELOW HERE.  PUT IT ABOVE PINCTRL */
