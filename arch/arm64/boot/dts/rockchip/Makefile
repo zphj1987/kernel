@@ -17,6 +17,7 @@ dtb-$(CONFIG_ARCH_ROCKCHIP) += rk3308-fpga.dtb
 dtb-$(CONFIG_ARCH_ROCKCHIP) += rk3308-robot.dtb
 dtb-$(CONFIG_ARCH_ROCKCHIP) += rk3308-rock-pi-s.dtb
 dtb-$(CONFIG_ARCH_ROCKCHIP) += rk3308-shajin.dtb
+dtb-$(CONFIG_ARCH_ROCKCHIP) += rk3308-songgang.dtb
 dtb-$(CONFIG_ARCH_ROCKCHIP) += rk3308-voice-module-board-v10.dtb
 dtb-$(CONFIG_ARCH_ROCKCHIP) += rk3308b-evb-amic-v10.dtb
 dtb-$(CONFIG_ARCH_ROCKCHIP) += rk3326-evb-ai-va-v10.dtb

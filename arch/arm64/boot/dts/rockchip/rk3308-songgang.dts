@@ -1,0 +1,83 @@
+// SPDX-License-Identifier: (GPL-2.0+ OR MIT)
+/*
+ * Copyright (c) 2018 Fuzhou Rockchip Electronics Co., Ltd
+ */
+
+/dts-v1/;
+
+#include "rk3308-rock-pi-s-core-evb.dtsi"
+
+/ {
+	model = "Radxa Songgang";
+	compatible = "radxa,songgang", "rockchip,rk3308";
+
+	vcc_phy: vcc-phy-regulator {
+		compatible = "regulator-fixed";
+		regulator-name = "vcc_phy";
+		regulator-always-on;
+		regulator-boot-on;
+	};
+};
+
+&mac {
+	phy-supply = <&vcc_phy>;
+	assigned-clocks = <&cru SCLK_MAC>;
+	assigned-clock-parents = <&mac_clkin>;
+	clock_in_out = "input";
+	pinctrl-names = "default";
+	pinctrl-0 = <&rmii_pins &mac_refclk_12ma>;
+	snps,reset-gpio = <&gpio1 RK_PB3 GPIO_ACTIVE_LOW>;
+	snps,reset-active-low;
+	snps,reset-delays-us = <0 50000 50000>;
+	status = "okay";
+};
+
+&dmc {
+	center-supply = <&vdd_log>;
+	status = "okay";
+};
+
+&emmc {
+	status = "okay";
+};
+
+&sdmmc {
+	status = "okay";
+};
+
+&u2phy {
+	status = "okay";
+
+	u2phy_host: host-port {
+		status = "okay";
+	};
+
+	u2phy_otg: otg-port {
+		status = "okay";
+	};
+};
+
+&usb20_otg {
+	status = "okay";
+};
+
+&usb_host0_ehci {
+	status = "okay";
+};
+
+&usb_host0_ohci{
+	status = "okay";
+};
+
+&i2c1 {
+	status = "okay";
+};
+
+/* For console */
+&uart0 {
+	status = "okay";
+};
+
+/* DON'T PUT ANYTHING BELOW HERE.  PUT IT ABOVE PINCTRL */
+/* DON'T PUT ANYTHING BELOW HERE.  PUT IT ABOVE PINCTRL */
+/* DON'T PUT ANYTHING BELOW HERE.  PUT IT ABOVE PINCTRL */
