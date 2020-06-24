@@ -15,6 +15,8 @@ dtbo-$(CONFIG_ARCH_ROCKCHIP) += \
 	rk3399pro-uart2.dtbo \
 	rk3399pro-uart4.dtbo \
 	rk3399pro-w1-gpio.dtbo \
+	rockpin10-spi1-waveshare35b-v2.dtbo \
+	rockpin10-spi1-waveshare35c.dtbo \
 	spi1-flash-boot.dtbo
 
 scr-$(CONFIG_ARCH_ROCKCHIP) += \

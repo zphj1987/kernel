@@ -33,6 +33,7 @@ Add optional parameters with their values to /boot/uEnv.txt if you want to chang
 - rk3399pro-uart2, rk3399pro-uart4
 - rk3399pro-console-on-uart2, rk3399pro-console-on-uart4
 - rk3399pro-w1-gpio
+- rockpin10-spi1-waveshare35b-v2, rockpin10-spi1-waveshare35c
 
 #### rk3399pro-i2c2
 
@@ -153,3 +154,10 @@ to the 40-pin connector on ROCK Pi N10.
 
 Activates PCIe Gen2 Mode
 
+#### rockpin10-spi1-waveshare35b-v2
+
+Activates waveshare 3.5inch lcd(B v2) on ROCK Pi N10
+
+#### rockpin10-spi1-waveshare35c
+
+Activates waveshare 3.5inch lcd(C) on ROCK Pi N10
