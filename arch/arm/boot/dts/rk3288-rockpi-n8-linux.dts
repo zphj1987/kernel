@@ -274,6 +274,9 @@
 
 		clocks = <&cru SCLK_VIP_OUT>;
 		clock-names = "clk_cif_out";
+		pinctrl-names = "default";
+		pinctrl-0 = <&cam_pwdn>;
+		pwdn-gpios = <&gpio6 6 GPIO_ACTIVE_HIGH>;
 		rockchip,camera-module-index = <0>;
 		rockchip,camera-module-facing = "back";
 		rockchip,camera-module-name = "imx219";
@@ -450,8 +453,8 @@
 };
 
 &pinctrl {
-	pinctrl-names = "default";
-	pinctrl-0 = <&cam_pwdn>;
+//	pinctrl-names = "default";
+//	pinctrl-0 = <&cam_pwdn>;
 
 	cam {
 		cam_pwdn: cam-pwdn {
