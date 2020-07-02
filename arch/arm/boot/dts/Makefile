@@ -569,6 +569,7 @@ dtb-$(CONFIG_ARCH_ROCKCHIP) += \
 	rk3288-rockpi-n8-linux.dtb \
 	rk3288-rockpi-n8-linux-edp.dtb \
 	rk3288-rockpi-n8-linux-dsi.dtb \
+	rk3288-ficus2-linux.dtb \
 	rk3308-dot-v10-aarch32.dtb \
 	rk3308-dot-rk816-v10-aarch32.dtb \
 	rk3308-evb-dmic-i2s-v10-aarch32.dtb \
