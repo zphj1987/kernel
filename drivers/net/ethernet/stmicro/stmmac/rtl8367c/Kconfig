@@ -1,0 +1,3 @@
+# SPDX-License-Identifier: GPL-2.0
+config ETHNET_RTL8367C
+	tristate "ethnet rtl8367c support"
