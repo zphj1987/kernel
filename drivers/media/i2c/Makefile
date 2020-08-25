@@ -163,4 +163,6 @@ obj-$(CONFIG_VIDEO_SC210IOT)	+= sc210iot.o
 obj-$(CONFIG_VIDEO_SC2310)	+= sc2310.o
 obj-$(CONFIG_VIDEO_SC4238)	+= sc4238.o
 
+obj-$(CONFIG_VIDEO_PREISP_DUMMY_SENSOR)	+= preisp-dummy.o
+
 obj-$(CONFIG_SDR_MAX2175) += max2175.o
