@@ -54,6 +54,16 @@
 #include <linux/reset.h>
 #include <linux/of_mdio.h>
 
+#define RTL_8211E_PHY_ID  0x001cc915
+
+#define RTL8211E_PAGSEL		0x1f
+#define RTL8211E_PAGSEL_P0	0x0
+#define RTL8211E_PAGSEL_P5	0x5
+#define RTL8211E_P05_R05	0x5  /* EEE LED control Reg.5 in Page 5 */
+#define RTL8211E_P05_R05_EEE_LED_DISABLED	0x8b82
+#define RTL8211E_P05_R06	0x6  /* EEE LED control Reg.6 in Page 5 */
+#define RTL8211E_P05_R06_EEE_LED_DISABLED	0x052b
+
 #define	STMMAC_ALIGN(x)		__ALIGN_KERNEL(x, SMP_CACHE_BYTES)
 
 /* Module parameters */
@@ -2834,6 +2844,22 @@ static int stmmac_hw_init(struct stmmac_priv *priv)
 	return 0;
 }
 
+static int phy_rtl8211e_led_fixup(struct phy_device *phydev)
+{
+	printk("%s in\n", __func__);
+
+	/* By default the EEE LED mode is enabled, that is
+	 * blinking as 400ms on and 2s off. And we want to
+	 * disable EEE LED mode.
+	 */
+	phy_write(phydev, RTL8211E_PAGSEL, RTL8211E_PAGSEL_P5);
+	phy_write(phydev, RTL8211E_P05_R05, RTL8211E_P05_R05_EEE_LED_DISABLED);
+	phy_write(phydev, RTL8211E_P05_R06, RTL8211E_P05_R06_EEE_LED_DISABLED);
+	phy_write(phydev, RTL8211E_PAGSEL, RTL8211E_PAGSEL_P0);
+
+	return 0;
+}
+
 /**
  * stmmac_dvr_probe
  * @device: device pointer
@@ -2992,6 +3018,11 @@ int stmmac_dvr_probe(struct device *device,
 			   __func__, ret);
 		goto error_netdev_register;
 	}
+
+	/* register the PHY board fixup */
+	ret = phy_register_fixup_for_uid(RTL_8211E_PHY_ID, 0xffffffff, phy_rtl8211e_led_fixup);
+	if (ret)
+		pr_warn("Cannot register PHY board fixup.\n");
 
 	return ret;
 
