@@ -128,3 +128,5 @@ config STMMAC_PCI
 
 	  If unsure, say N.
 endif
+
+source "drivers/net/ethernet/stmicro/stmmac/rtl8367c/Kconfig"

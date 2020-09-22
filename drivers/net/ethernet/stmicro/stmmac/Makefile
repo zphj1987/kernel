@@ -18,3 +18,5 @@ stmmac-platform-objs:= stmmac_platform.o
 
 obj-$(CONFIG_STMMAC_PCI) += stmmac-pci.o
 stmmac-pci-objs:= stmmac_pci.o
+
+obj-$(CONFIG_ETHNET_RTL8367C) += rtl8367c/
