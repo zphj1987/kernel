@@ -879,6 +879,26 @@ static int rkvenc_devfreq_remove(struct mpp_dev *mpp)
 }
 #endif
 
+static int rkvenc_iommu_fault_handle(struct iommu_domain *iommu,
+				     struct device *iommu_dev,
+				     unsigned long iova, int status, void *arg)
+{
+	struct mpp_dev *mpp = (struct mpp_dev *)arg;
+
+	mpp_debug_enter();
+
+	down_write(&mpp->iommu_info->rw_sem);
+
+	if (mpp->hw_ops->reset)
+		mpp->hw_ops->reset(mpp);
+
+	up_write(&mpp->iommu_info->rw_sem);
+
+	mpp_debug_leave();
+
+	return 0;
+}
+
 static int rkvenc_init(struct mpp_dev *mpp)
 {
 	struct rkvenc_dev *enc = to_rkvenc_dev(mpp);
@@ -915,6 +935,9 @@ static int rkvenc_init(struct mpp_dev *mpp)
 	if (!enc->rst_core)
 		mpp_err("No core reset resource define\n");
 
+	/* iommu pagefault handle */
+	mpp->iommu_info->hdl = rkvenc_iommu_fault_handle;
+
 #ifdef CONFIG_PM_DEVFREQ
 	ret = rkvenc_devfreq_init(mpp);
 	if (ret)
@@ -928,6 +951,7 @@ static int rkvenc_exit(struct mpp_dev *mpp)
 #ifdef CONFIG_PM_DEVFREQ
 	rkvenc_devfreq_remove(mpp);
 #endif
+
 	return 0;
 }
 
