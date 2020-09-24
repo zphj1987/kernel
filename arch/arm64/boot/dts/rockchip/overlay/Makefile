@@ -22,6 +22,7 @@ dtbo-$(CONFIG_ARCH_ROCKCHIP) += \
 	rockpis-v12-spi2-waveshare35b-v2.dtbo \
 	rockpis-v12-spi2-waveshare35c.dtbo \
 	rockpis-dmic-8ch-pdm.dtbo \
+	rockpis-i2s-out.dtbo \
 	rockpis-spdif-out.dtbo
 
 scr-$(CONFIG_ARCH_ROCKCHIP) += \
