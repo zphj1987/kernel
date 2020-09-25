@@ -707,6 +707,9 @@ static void stmmac_adjust_link(struct net_device *dev)
 	if (phydev->link) {
 		u32 ctrl = readl(priv->ioaddr + MAC_CTRL_REG);
 
+		phydev->speed = SPEED_1000;
+		phydev->duplex = DUPLEX_FULL;
+
 		/* Now we make sure that we can be in full duplex mode.
 		 * If not, we operate in half-duplex mode. */
 		if (phydev->duplex != priv->oldduplex) {

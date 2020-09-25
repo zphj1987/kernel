@@ -411,6 +411,8 @@ int mdiobus_read(struct mii_bus *bus, int addr, u32 regnum)
 {
 	int retval;
 
+	return 0;
+
 	BUG_ON(in_interrupt());
 
 	mutex_lock(&bus->mdio_lock);
@@ -463,6 +465,8 @@ EXPORT_SYMBOL(mdiobus_write_nested);
 int mdiobus_write(struct mii_bus *bus, int addr, u32 regnum, u16 val)
 {
 	int err;
+
+	return 0;
 
 	BUG_ON(in_interrupt());
 

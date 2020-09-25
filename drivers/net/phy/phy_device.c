@@ -37,9 +37,386 @@
 
 #include <asm/irq.h>
 
+#include "../ethernet/stmicro/stmmac/rtl8367c/rtk_switch.h"
+//#include "../ethernet/stmicro/stmmac/rtl8367c/rtk_types.h"
+//#include "../ethernet/stmicro/stmmac/rtl8367c/rtl8367c_asicdrv.h"
+#include "../ethernet/stmicro/stmmac/rtl8367c/rtl8367c_asicdrv_phy.h"
+#include "../ethernet/stmicro/stmmac/rtl8367c/port.h"
+#include "../ethernet/stmicro/stmmac/rtl8367c/smi.h"
+#include "../ethernet/stmicro/stmmac/rtl8367c/rtl8367c_asicdrv_port.h"
+#include "../ethernet/stmicro/stmmac/rtl8367c/stat.h"
+
 MODULE_DESCRIPTION("PHY library");
 MODULE_AUTHOR("Andy Fleming");
 MODULE_LICENSE("GPL");
+
+const char *APIMIBString[STAT_PORT_CNTR_END] = {
+	"ifInOctets",
+	"dot3StatsFCSErrors",
+	"dot3StatsSymbolErrors",
+	"dot3InPauseFrames",
+	"dot3ControlInUnknownOpcodes",
+	"etherStatsFragments",
+	"etherStatsJabbers",
+	"ifInUcastPkts",
+	"etherStatsDropEvents",
+	"etherStatsOctets",
+	"etherStatsUndersizePkts",
+	"etherOversizeStats",
+	"etherStatsPkts64Octets",
+	"etherStatsPkts65to127Octets",
+	"etherStatsPkts128to255Octets",
+	"etherStatsPkts256to511Octets",
+	"etherStatsPkts512to1023Octets",
+	"etherStatsPkts1024to1518Octets",
+	"etherStatsMulticastPkts",
+	"etherStatsBroadcastPkts",
+	"ifOutOctets",
+	"dot3StatsSingleCollisionFrames",
+	"dot3StatsMultipleCollisionFrames",
+	"dot3StatsDeferredTransmissions",
+	"dot3StatsLateCollisions",
+	"etherStatsCollisions",
+	"dot3StatsExcessiveCollisions",
+	"dot3OutPauseFrames",
+	"dot1dBasePortDelayExceededDiscards",
+	"dot1dTpPortInDiscards",
+	"ifOutUcastPkts",
+	"ifOutMulticastPkts",
+	"ifOutBroadcastPkts",
+	"outOampduPkts",
+	"inOampduPkts",
+	"pktgenPkts",
+	"inMldChecksumError",
+	"inIgmpChecksumError",
+	"inMldSpecificQuery",
+	"inMldGeneralQuery",
+	"inIgmpSpecificQuery",
+	"inIgmpGeneralQuery",
+	"inMldLeaves",
+	"inIgmpInterfaceLeaves",
+	"inIgmpJoinsSuccess",
+	"inIgmpJoinsFail",
+	"inMldJoinsSuccess",
+	"inMldJoinsFail",
+	"inReportSuppressionDrop",
+	"inLeaveSuppressionDrop",
+	"outIgmpReports",
+	"outIgmpLeaves",
+	"outIgmpGeneralQuery",
+	"outIgmpSpecificQuery",
+	"outMldReports",
+	"outMldLeaves",
+	"outMldGeneralQuery",
+	"outMldSpecificQuery",
+	"inKnownMulticastPkts",
+	"ifInMulticastPkts",
+	"ifInBroadcastPkts"
+};
+
+static int gPhyRst,gPhyMib;
+static int gPhyReg;
+
+static ssize_t show_rtl_phy_reg(struct device *dev,
+				struct device_attribute *attr, char *buf) {
+	int ret = snprintf(buf, PAGE_SIZE, "current phy reg = 0x%x\n", gPhyReg);
+
+	return ret;
+}
+
+static ssize_t set_rtl_phy_reg(struct device *dev,struct device_attribute *attr,
+				const char *buf, size_t count) {
+	int ovl;
+
+	int r = kstrtoint(buf, 0, &ovl);
+	if (r)
+		printk("kstrtoint failed\n");
+
+	gPhyReg = ovl;
+	printk("%s----ovl=0x%x\n", __FUNCTION__, ovl);
+
+	return count;
+}
+
+static ssize_t show_rtl_phy_regValue(struct device *dev,
+					struct device_attribute *attr, char *buf) {
+	//struct phy_device *phy_dev = dev_get_drvdata(dev);
+	int ret = 0;
+	int val;
+/*
+#if 0
+	val = phy_read(phy_dev, gPhyReg);
+	ret = snprintf(buf, PAGE_SIZE, "phy reg 0x%x = 0x%x\n", gPhyReg, val);
+#else
+	int i=0;
+
+	for (i=0; i<32; i++) {
+		printk("%d: 0x%x\n", i, phy_read(phy_dev, i));
+	}
+
+	val = phy_read(phy_dev, gPhyReg);
+	ret = snprintf(buf, PAGE_SIZE, "phy reg 0x%x = 0x%x\n", gPhyReg, val);
+#endif
+*/
+
+	smi_read(gPhyReg, &val);
+	ret = snprintf(buf, PAGE_SIZE, "cat phy reg 0x%x = 0x%x\n", gPhyReg, val);
+
+	return ret;
+}
+
+static ssize_t set_rtl_phy_regValue(struct device *dev,
+					struct device_attribute *attr,
+					const char *buf, size_t count) {
+	int ovl;
+	int ret;
+	int val;
+
+	//struct phy_device *phy_dev = dev_get_drvdata(dev);
+	ret = kstrtoint(buf, 0, &ovl);
+	smi_write(gPhyReg,ovl);
+	smi_read(gPhyReg, &val);
+	printk("set switch reg 0x%x: 0x%x\n",gPhyReg,val);
+
+	return count;
+}
+
+static ssize_t show_rtl_phy_Rst(struct device *dev,
+				struct device_attribute *attr, char *buf) {
+	int ret = snprintf(buf, PAGE_SIZE, "current phy reg = 0x%x\n", gPhyRst);
+
+	return ret;
+}
+
+static ssize_t set_rtl_phy_Rst(struct device *dev,struct device_attribute *attr,
+				const char *buf, size_t count) {
+	int ovl;
+
+	int r = kstrtoint(buf, 0, &ovl);
+	if (r)
+		printk("kstrtoint failed\n");
+
+	gPhyRst = ovl;
+	if(gPhyRst == 1)
+		rtk_stat_global_reset();
+	printk("--------rtk_stat_global_reset--------\n");
+
+	return count;
+}
+
+static ssize_t show_rtl_phy_Mib(struct device *dev,
+					struct device_attribute *attr, char *buf) {
+	int ret = snprintf(buf, PAGE_SIZE, "current phy reg = 0x%x\n", gPhyMib);
+
+	return ret;
+}
+
+static ssize_t set_rtl_phy_Mib(struct device *dev,
+					struct device_attribute *attr,
+					const char *buf, size_t count) {
+	int ovl;
+	int ret,retVal,regData;
+
+	rtk_port_t port = EXT_PORT0;
+	rtk_port_t port1 = UTP_PORT0;
+	rtk_stat_port_cntr_t portCntrs;
+	ret = kstrtoint(buf, 0, &ovl);
+	gPhyMib = ovl;
+	if(gPhyMib == 1)
+	{
+		port = EXT_PORT0;
+		port1 = UTP_PORT0;
+	}
+	else if(gPhyMib == 2)
+	{
+		port = EXT_PORT1;
+		port1 = UTP_PORT1;
+	}
+
+	if((retVal = rtl8367c_getAsicPHYReg(port1, 0x01, &regData)) != RT_ERR_OK)
+		return retVal;
+	printk("===========================regData read one 0x%x\n",regData);
+	if((retVal = rtl8367c_getAsicPHYReg(port1, 0x01, &regData)) != RT_ERR_OK)
+		return retVal;
+	printk("===========================regData read two 0x%x\n",regData);
+
+	{
+		printk("--------rtk_stat_global_mib------UTP_PORTX---------\n");
+
+		if(RT_ERR_OK != rtk_stat_port_getAll(port1, &portCntrs))
+			return RT_ERR_FAILED;
+
+		PRINT("\r\nport %d: %-35s[%02d]:  %25lld\n",port1,APIMIBString[0],0,(long long int)portCntrs.ifInOctets);
+		PRINT("\r\nport %d: %-35s[%02d]:  %25lld\n",port1,APIMIBString[1],1,(long long int)portCntrs.dot3StatsFCSErrors);
+		PRINT("\r\nport %d: %-35s[%02d]:  %25lld\n",port1,APIMIBString[2],2,(long long int)portCntrs.dot3StatsSymbolErrors);
+		PRINT("\r\nport %d: %-35s[%02d]:  %25lld\n",port1,APIMIBString[3],3,(long long int)portCntrs.dot3InPauseFrames);
+		PRINT("\r\nport %d: %-35s[%02d]:  %25lld\n",port1,APIMIBString[4],4,(long long int)portCntrs.dot3ControlInUnknownOpcodes);
+		PRINT("\r\nport %d: %-35s[%02d]:  %25lld\n",port1,APIMIBString[5],5,(long long int)portCntrs.etherStatsFragments);
+		PRINT("\r\nport %d: %-35s[%02d]:  %25lld\n",port1,APIMIBString[6],6,(long long int)portCntrs.etherStatsJabbers);
+		PRINT("\r\nport %d: %-35s[%02d]:  %25lld\n",port1,APIMIBString[7],7,(long long int)portCntrs.ifInUcastPkts);
+		PRINT("\r\nport %d: %-35s[%02d]:  %25lld\n",port1,APIMIBString[8],8,(long long int)portCntrs.etherStatsDropEvents);
+		PRINT("\r\nport %d: %-35s[%02d]:  %25lld\n",port1,APIMIBString[9],9,(long long int)portCntrs.etherStatsOctets);
+		PRINT("\r\nport %d: %-35s[%02d]:  %25lld\n",port1,APIMIBString[10],10,(long long int)portCntrs.etherStatsUndersizePkts);
+		PRINT("\r\nport %d: %-35s[%02d]:  %25lld\n",port1,APIMIBString[11],11,(long long int)portCntrs.etherStatsOversizePkts);
+		PRINT("\r\nport %d: %-35s[%02d]:  %25lld\n",port1,APIMIBString[12],12,(long long int)portCntrs.etherStatsPkts64Octets);
+		PRINT("\r\nport %d: %-35s[%02d]:  %25lld\n",port1,APIMIBString[13],13,(long long int)portCntrs.etherStatsPkts65to127Octets);
+		PRINT("\r\nport %d: %-35s[%02d]:  %25lld\n",port1,APIMIBString[14],14,(long long int)portCntrs.etherStatsPkts128to255Octets);
+		PRINT("\r\nport %d: %-35s[%02d]:  %25lld\n",port1,APIMIBString[15],15,(long long int)portCntrs.etherStatsPkts256to511Octets);
+		PRINT("\r\nport %d: %-35s[%02d]:  %25lld\n",port1,APIMIBString[16],16,(long long int)portCntrs.etherStatsPkts512to1023Octets);
+		PRINT("\r\nport %d: %-35s[%02d]:  %25lld\n",port1,APIMIBString[17],17,(long long int)portCntrs.etherStatsPkts1024toMaxOctets);
+		PRINT("\r\nport %d: %-35s[%02d]:  %25lld\n",port1,APIMIBString[18],18,(long long int)portCntrs.etherStatsMcastPkts);
+		PRINT("\r\nport %d: %-35s[%02d]:  %25lld\n",port1,APIMIBString[19],19,(long long int)portCntrs.etherStatsBcastPkts);
+		PRINT("\r\nport %d: %-35s[%02d]:  %25lld\n",port1,APIMIBString[20],20,(long long int)portCntrs.ifOutOctets);
+		PRINT("\r\nport %d: %-35s[%02d]:  %25lld\n",port1,APIMIBString[21],21,(long long int)portCntrs.dot3StatsSingleCollisionFrames);
+		PRINT("\r\nport %d: %-35s[%02d]:  %25lld\n",port1,APIMIBString[22],22,(long long int)portCntrs.dot3StatsMultipleCollisionFrames);
+		PRINT("\r\nport %d: %-35s[%02d]:  %25lld\n",port1,APIMIBString[23],23,(long long int)portCntrs.dot3StatsDeferredTransmissions);
+		PRINT("\r\nport %d: %-35s[%02d]:  %25lld\n",port1,APIMIBString[24],24,(long long int)portCntrs.dot3StatsLateCollisions);
+		PRINT("\r\nport %d: %-35s[%02d]:  %25lld\n",port1,APIMIBString[25],25,(long long int)portCntrs.etherStatsCollisions);
+		PRINT("\r\nport %d: %-35s[%02d]:  %25lld\n",port1,APIMIBString[26],26,(long long int)portCntrs.dot3StatsExcessiveCollisions);
+		PRINT("\r\nport %d: %-35s[%02d]:  %25lld\n",port1,APIMIBString[27],27,(long long int)portCntrs.dot3OutPauseFrames);
+		PRINT("\r\nport %d: %-35s[%02d]:  %25lld\n",port1,APIMIBString[28],28,(long long int)portCntrs.dot1dBasePortDelayExceededDiscards);
+		PRINT("\r\nport %d: %-35s[%02d]:  %25lld\n",port1,APIMIBString[29],29,(long long int)portCntrs.dot1dTpPortInDiscards);
+		PRINT("\r\nport %d: %-35s[%02d]:  %25lld\n",port1,APIMIBString[30],30,(long long int)portCntrs.ifOutUcastPkts);
+		PRINT("\r\nport %d: %-35s[%02d]:  %25lld\n",port1,APIMIBString[31],31,(long long int)portCntrs.ifOutMulticastPkts);
+		PRINT("\r\nport %d: %-35s[%02d]:  %25lld\n",port1,APIMIBString[32],32,(long long int)portCntrs.ifOutBrocastPkts);
+		PRINT("\r\nport %d: %-35s[%02d]:  %25lld\n",port1,APIMIBString[33],33,(long long int)portCntrs.outOampduPkts);
+		PRINT("\r\nport %d: %-35s[%02d]:  %25lld\n",port1,APIMIBString[34],34,(long long int)portCntrs.inOampduPkts);
+		PRINT("\r\nport %d: %-35s[%02d]:  %25lld\n",port1,APIMIBString[35],35,(long long int)portCntrs.pktgenPkts);
+		PRINT("\r\nport %d: %-35s[%02d]:  %25lld\n",port1,APIMIBString[36],36,(long long int)portCntrs.inMldChecksumError);
+		PRINT("\r\nport %d: %-35s[%02d]:  %25lld\n",port1,APIMIBString[37],37,(long long int)portCntrs.inIgmpChecksumError);
+		PRINT("\r\nport %d: %-35s[%02d]:  %25lld\n",port1,APIMIBString[38],38,(long long int)portCntrs.inMldSpecificQuery);
+		PRINT("\r\nport %d: %-35s[%02d]:  %25lld\n",port1,APIMIBString[39],39,(long long int)portCntrs.inMldGeneralQuery);
+		PRINT("\r\nport %d: %-35s[%02d]:  %25lld\n",port1,APIMIBString[40],40,(long long int)portCntrs.inIgmpSpecificQuery);
+		PRINT("\r\nport %d: %-35s[%02d]:  %25lld\n",port1,APIMIBString[41],41,(long long int)portCntrs.inIgmpGeneralQuery);
+		PRINT("\r\nport %d: %-35s[%02d]:  %25lld\n",port1,APIMIBString[42],42,(long long int)portCntrs.inMldLeaves);
+		PRINT("\r\nport %d: %-35s[%02d]:  %25lld\n",port1,APIMIBString[43],43,(long long int)portCntrs.inIgmpLeaves);
+		PRINT("\r\nport %d: %-35s[%02d]:  %25lld\n",port1,APIMIBString[44],44,(long long int)portCntrs.inIgmpJoinsSuccess);
+		PRINT("\r\nport %d: %-35s[%02d]:  %25lld\n",port1,APIMIBString[45],45,(long long int)portCntrs.inIgmpJoinsFail);
+		PRINT("\r\nport %d: %-35s[%02d]:  %25lld\n",port1,APIMIBString[46],46,(long long int)portCntrs.inMldJoinsSuccess);
+		PRINT("\r\nport %d: %-35s[%02d]:  %25lld\n",port1,APIMIBString[47],47,(long long int)portCntrs.inMldJoinsFail);
+		PRINT("\r\nport %d: %-35s[%02d]:  %25lld\n",port1,APIMIBString[48],48,(long long int)portCntrs.inReportSuppressionDrop);
+		PRINT("\r\nport %d: %-35s[%02d]:  %25lld\n",port1,APIMIBString[49],49,(long long int)portCntrs.inLeaveSuppressionDrop);
+		PRINT("\r\nport %d: %-35s[%02d]:  %25lld\n",port1,APIMIBString[50],50,(long long int)portCntrs.outIgmpReports);
+		PRINT("\r\nport %d: %-35s[%02d]:  %25lld\n",port1,APIMIBString[51],51,(long long int)portCntrs.outIgmpLeaves);
+		PRINT("\r\nport %d: %-35s[%02d]:  %25lld\n",port1,APIMIBString[52],52,(long long int)portCntrs.outIgmpGeneralQuery);
+		PRINT("\r\nport %d: %-35s[%02d]:  %25lld\n",port1,APIMIBString[53],53,(long long int)portCntrs.outIgmpSpecificQuery);
+		PRINT("\r\nport %d: %-35s[%02d]:  %25lld\n",port1,APIMIBString[54],54,(long long int)portCntrs.outMldReports);
+		PRINT("\r\nport %d: %-35s[%02d]:  %25lld\n",port1,APIMIBString[55],55,(long long int)portCntrs.outMldLeaves);
+		PRINT("\r\nport %d: %-35s[%02d]:  %25lld\n",port1,APIMIBString[56],56,(long long int)portCntrs.outMldGeneralQuery);
+		PRINT("\r\nport %d: %-35s[%02d]:  %25lld\n",port1,APIMIBString[57],57,(long long int)portCntrs.outMldSpecificQuery);
+		PRINT("\r\nport %d: %-35s[%02d]:  %25lld\n",port1,APIMIBString[58],58,(long long int)portCntrs.inKnownMulticastPkts);
+		PRINT("\r\nport %d: %-35s[%02d]:  %25lld\n",port1,APIMIBString[59],59,(long long int)portCntrs.ifInMulticastPkts);
+		PRINT("\r\nport %d: %-35s[%02d]:  %25lld\n",port1,APIMIBString[60],60,(long long int)portCntrs.ifInBroadcastPkts);
+		PRINT("\n");
+
+		//printk("============================%d: 0x%x\n",gPhyReg,val);
+	}
+
+	{
+		printk("--------rtk_stat_global_mib----------EXT_PORTX-----\n");
+		if(RT_ERR_OK != rtk_stat_port_getAll(port, &portCntrs))
+			return RT_ERR_FAILED;
+
+		PRINT("\r\nport %d: %-35s[%02d]:  %25lld\n",port,APIMIBString[0],0,(long long int)portCntrs.ifInOctets);
+		PRINT("\r\nport %d: %-35s[%02d]:  %25lld\n",port,APIMIBString[1],1,(long long int)portCntrs.dot3StatsFCSErrors);
+		PRINT("\r\nport %d: %-35s[%02d]:  %25lld\n",port,APIMIBString[2],2,(long long int)portCntrs.dot3StatsSymbolErrors);
+		PRINT("\r\nport %d: %-35s[%02d]:  %25lld\n",port,APIMIBString[3],3,(long long int)portCntrs.dot3InPauseFrames);
+		PRINT("\r\nport %d: %-35s[%02d]:  %25lld\n",port,APIMIBString[4],4,(long long int)portCntrs.dot3ControlInUnknownOpcodes);
+		PRINT("\r\nport %d: %-35s[%02d]:  %25lld\n",port,APIMIBString[5],5,(long long int)portCntrs.etherStatsFragments);
+		PRINT("\r\nport %d: %-35s[%02d]:  %25lld\n",port,APIMIBString[6],6,(long long int)portCntrs.etherStatsJabbers);
+		PRINT("\r\nport %d: %-35s[%02d]:  %25lld\n",port,APIMIBString[7],7,(long long int)portCntrs.ifInUcastPkts);
+		PRINT("\r\nport %d: %-35s[%02d]:  %25lld\n",port,APIMIBString[8],8,(long long int)portCntrs.etherStatsDropEvents);
+		PRINT("\r\nport %d: %-35s[%02d]:  %25lld\n",port,APIMIBString[9],9,(long long int)portCntrs.etherStatsOctets);
+		PRINT("\r\nport %d: %-35s[%02d]:  %25lld\n",port,APIMIBString[10],10,(long long int)portCntrs.etherStatsUndersizePkts);
+		PRINT("\r\nport %d: %-35s[%02d]:  %25lld\n",port,APIMIBString[11],11,(long long int)portCntrs.etherStatsOversizePkts);
+		PRINT("\r\nport %d: %-35s[%02d]:  %25lld\n",port,APIMIBString[12],12,(long long int)portCntrs.etherStatsPkts64Octets);
+		PRINT("\r\nport %d: %-35s[%02d]:  %25lld\n",port,APIMIBString[13],13,(long long int)portCntrs.etherStatsPkts65to127Octets);
+		PRINT("\r\nport %d: %-35s[%02d]:  %25lld\n",port,APIMIBString[14],14,(long long int)portCntrs.etherStatsPkts128to255Octets);
+		PRINT("\r\nport %d: %-35s[%02d]:  %25lld\n",port,APIMIBString[15],15,(long long int)portCntrs.etherStatsPkts256to511Octets);
+		PRINT("\r\nport %d: %-35s[%02d]:  %25lld\n",port,APIMIBString[16],16,(long long int)portCntrs.etherStatsPkts512to1023Octets);
+		PRINT("\r\nport %d: %-35s[%02d]:  %25lld\n",port,APIMIBString[17],17,(long long int)portCntrs.etherStatsPkts1024toMaxOctets);
+		PRINT("\r\nport %d: %-35s[%02d]:  %25lld\n",port,APIMIBString[18],18,(long long int)portCntrs.etherStatsMcastPkts);
+		PRINT("\r\nport %d: %-35s[%02d]:  %25lld\n",port,APIMIBString[19],19,(long long int)portCntrs.etherStatsBcastPkts);
+		PRINT("\r\nport %d: %-35s[%02d]:  %25lld\n",port,APIMIBString[20],20,(long long int)portCntrs.ifOutOctets);
+		PRINT("\r\nport %d: %-35s[%02d]:  %25lld\n",port,APIMIBString[21],21,(long long int)portCntrs.dot3StatsSingleCollisionFrames);
+		PRINT("\r\nport %d: %-35s[%02d]:  %25lld\n",port,APIMIBString[22],22,(long long int)portCntrs.dot3StatsMultipleCollisionFrames);
+		PRINT("\r\nport %d: %-35s[%02d]:  %25lld\n",port,APIMIBString[23],23,(long long int)portCntrs.dot3StatsDeferredTransmissions);
+		PRINT("\r\nport %d: %-35s[%02d]:  %25lld\n",port,APIMIBString[24],24,(long long int)portCntrs.dot3StatsLateCollisions);
+		PRINT("\r\nport %d: %-35s[%02d]:  %25lld\n",port,APIMIBString[25],25,(long long int)portCntrs.etherStatsCollisions);
+		PRINT("\r\nport %d: %-35s[%02d]:  %25lld\n",port,APIMIBString[26],26,(long long int)portCntrs.dot3StatsExcessiveCollisions);
+		PRINT("\r\nport %d: %-35s[%02d]:  %25lld\n",port,APIMIBString[27],27,(long long int)portCntrs.dot3OutPauseFrames);
+		PRINT("\r\nport %d: %-35s[%02d]:  %25lld\n",port,APIMIBString[28],28,(long long int)portCntrs.dot1dBasePortDelayExceededDiscards);
+		PRINT("\r\nport %d: %-35s[%02d]:  %25lld\n",port,APIMIBString[29],29,(long long int)portCntrs.dot1dTpPortInDiscards);
+		PRINT("\r\nport %d: %-35s[%02d]:  %25lld\n",port,APIMIBString[30],30,(long long int)portCntrs.ifOutUcastPkts);
+		PRINT("\r\nport %d: %-35s[%02d]:  %25lld\n",port,APIMIBString[31],31,(long long int)portCntrs.ifOutMulticastPkts);
+		PRINT("\r\nport %d: %-35s[%02d]:  %25lld\n",port,APIMIBString[32],32,(long long int)portCntrs.ifOutBrocastPkts);
+		PRINT("\r\nport %d: %-35s[%02d]:  %25lld\n",port,APIMIBString[33],33,(long long int)portCntrs.outOampduPkts);
+		PRINT("\r\nport %d: %-35s[%02d]:  %25lld\n",port,APIMIBString[34],34,(long long int)portCntrs.inOampduPkts);
+		PRINT("\r\nport %d: %-35s[%02d]:  %25lld\n",port,APIMIBString[35],35,(long long int)portCntrs.pktgenPkts);
+		PRINT("\r\nport %d: %-35s[%02d]:  %25lld\n",port,APIMIBString[36],36,(long long int)portCntrs.inMldChecksumError);
+		PRINT("\r\nport %d: %-35s[%02d]:  %25lld\n",port,APIMIBString[37],37,(long long int)portCntrs.inIgmpChecksumError);
+		PRINT("\r\nport %d: %-35s[%02d]:  %25lld\n",port,APIMIBString[38],38,(long long int)portCntrs.inMldSpecificQuery);
+		PRINT("\r\nport %d: %-35s[%02d]:  %25lld\n",port,APIMIBString[39],39,(long long int)portCntrs.inMldGeneralQuery);
+		PRINT("\r\nport %d: %-35s[%02d]:  %25lld\n",port,APIMIBString[40],40,(long long int)portCntrs.inIgmpSpecificQuery);
+		PRINT("\r\nport %d: %-35s[%02d]:  %25lld\n",port,APIMIBString[41],41,(long long int)portCntrs.inIgmpGeneralQuery);
+		PRINT("\r\nport %d: %-35s[%02d]:  %25lld\n",port,APIMIBString[42],42,(long long int)portCntrs.inMldLeaves);
+		PRINT("\r\nport %d: %-35s[%02d]:  %25lld\n",port,APIMIBString[43],43,(long long int)portCntrs.inIgmpLeaves);
+		PRINT("\r\nport %d: %-35s[%02d]:  %25lld\n",port,APIMIBString[44],44,(long long int)portCntrs.inIgmpJoinsSuccess);
+		PRINT("\r\nport %d: %-35s[%02d]:  %25lld\n",port,APIMIBString[45],45,(long long int)portCntrs.inIgmpJoinsFail);
+		PRINT("\r\nport %d: %-35s[%02d]:  %25lld\n",port,APIMIBString[46],46,(long long int)portCntrs.inMldJoinsSuccess);
+		PRINT("\r\nport %d: %-35s[%02d]:  %25lld\n",port,APIMIBString[47],47,(long long int)portCntrs.inMldJoinsFail);
+		PRINT("\r\nport %d: %-35s[%02d]:  %25lld\n",port,APIMIBString[48],48,(long long int)portCntrs.inReportSuppressionDrop);
+		PRINT("\r\nport %d: %-35s[%02d]:  %25lld\n",port,APIMIBString[49],49,(long long int)portCntrs.inLeaveSuppressionDrop);
+		PRINT("\r\nport %d: %-35s[%02d]:  %25lld\n",port,APIMIBString[50],50,(long long int)portCntrs.outIgmpReports);
+		PRINT("\r\nport %d: %-35s[%02d]:  %25lld\n",port,APIMIBString[51],51,(long long int)portCntrs.outIgmpLeaves);
+		PRINT("\r\nport %d: %-35s[%02d]:  %25lld\n",port,APIMIBString[52],52,(long long int)portCntrs.outIgmpGeneralQuery);
+		PRINT("\r\nport %d: %-35s[%02d]:  %25lld\n",port,APIMIBString[53],53,(long long int)portCntrs.outIgmpSpecificQuery);
+		PRINT("\r\nport %d: %-35s[%02d]:  %25lld\n",port,APIMIBString[54],54,(long long int)portCntrs.outMldReports);
+		PRINT("\r\nport %d: %-35s[%02d]:  %25lld\n",port,APIMIBString[55],55,(long long int)portCntrs.outMldLeaves);
+		PRINT("\r\nport %d: %-35s[%02d]:  %25lld\n",port,APIMIBString[56],56,(long long int)portCntrs.outMldGeneralQuery);
+		PRINT("\r\nport %d: %-35s[%02d]:  %25lld\n",port,APIMIBString[57],57,(long long int)portCntrs.outMldSpecificQuery);
+		PRINT("\r\nport %d: %-35s[%02d]:  %25lld\n",port,APIMIBString[58],58,(long long int)portCntrs.inKnownMulticastPkts);
+		PRINT("\r\nport %d: %-35s[%02d]:  %25lld\n",port,APIMIBString[59],59,(long long int)portCntrs.ifInMulticastPkts);
+		PRINT("\r\nport %d: %-35s[%02d]:  %25lld\n",port,APIMIBString[60],60,(long long int)portCntrs.ifInBroadcastPkts);
+		PRINT("\n");
+	}
+
+	return count;
+}
+
+static struct device_attribute phy_reg_attrs[] = {
+	__ATTR(rtl_phy_reg, S_IRUGO | S_IWUSR, show_rtl_phy_reg, set_rtl_phy_reg),
+	__ATTR(rtl_phy_regValue, S_IRUGO | S_IWUSR, show_rtl_phy_regValue, set_rtl_phy_regValue),
+	__ATTR(rtl_phy_Rst, S_IRUGO | S_IWUSR, show_rtl_phy_Rst, set_rtl_phy_Rst),
+	__ATTR(rtl_phy_Mib, S_IRUGO | S_IWUSR, show_rtl_phy_Mib, set_rtl_phy_Mib)
+
+};
+
+int phy_create_sysfs(struct phy_device * phy_dev) {
+	int r;
+	int t;
+
+	dev_set_drvdata(&phy_dev->dev, phy_dev);
+	for (t = 0; t < ARRAY_SIZE(phy_reg_attrs); t++) {
+		r = device_create_file(&phy_dev->dev,&phy_reg_attrs[t]);
+		if (r) {
+			dev_err(&phy_dev->dev, "failed to create sysfs file\n");
+			return r;
+		}
+	}
+
+	return 0;
+}
+
+int phy_remove_sysfs(struct phy_device * phy_dev) {
+	int t;
+
+	for (t = 0; t < ARRAY_SIZE(phy_reg_attrs); t++) {
+		device_remove_file(&phy_dev->dev,&phy_reg_attrs[t]);
+	}
+
+	return 0;
+}
 
 void phy_device_free(struct phy_device *phydev)
 {
@@ -55,6 +432,7 @@ static void phy_device_release(struct device *dev)
 enum genphy_driver {
 	GENPHY_DRV_1G,
 	GENPHY_DRV_10G,
+	RL8367_DRV,
 	GENPHY_DRV_MAX
 };
 
@@ -168,7 +546,8 @@ struct phy_device *phy_device_create(struct mii_bus *bus, int addr, int phy_id,
 	dev->link = 1;
 	dev->interface = PHY_INTERFACE_MODE_GMII;
 
-	dev->autoneg = AUTONEG_ENABLE;
+	//dev->autoneg = AUTONEG_ENABLE;
+	dev->autoneg = 0; //AUTONEG_ENABLE;
 
 	dev->is_c45 = is_c45;
 	dev->addr = addr;
@@ -236,6 +615,7 @@ static int get_phy_c45_devs_in_pkg(struct mii_bus *bus, int addr, int dev_addr,
 	return 0;
 }
 
+
 /**
  * get_phy_c45_ids - reads the specified addr for its 802.3-c45 IDs.
  * @bus: the target MII bus
@@ -249,6 +629,7 @@ static int get_phy_c45_devs_in_pkg(struct mii_bus *bus, int addr, int dev_addr,
  *   zero on success.
  *
  */
+
 static int get_phy_c45_ids(struct mii_bus *bus, int addr, u32 *phy_id,
 			   struct phy_c45_device_ids *c45_ids) {
 	int phy_reg;
@@ -320,6 +701,7 @@ static int get_phy_c45_ids(struct mii_bus *bus, int addr, u32 *phy_id,
  *   its return value is in turn returned.
  *
  */
+#if 0
 static int get_phy_id(struct mii_bus *bus, int addr, u32 *phy_id,
 		      bool is_c45, struct phy_c45_device_ids *c45_ids)
 {
@@ -344,6 +726,88 @@ static int get_phy_id(struct mii_bus *bus, int addr, u32 *phy_id,
 
 	return 0;
 }
+#endif
+
+static int rtk8367rb_getphy_id(struct mii_bus *bus, int addr, u32 *phy_id,
+		      bool is_c45, struct phy_c45_device_ids *c45_ids)
+{
+	int ret;
+	u32 phy_reg;
+
+	if (is_c45)
+		return get_phy_c45_ids(bus, addr, phy_id, c45_ids);
+
+	/* Grab the bits from PHYIR1, and put them in the upper half */
+	ret = rtl8367c_getAsicPHYReg(addr, MII_PHYSID1, &phy_reg);
+
+	if (ret < 0)
+	{
+		pr_err("rtl8367b_getAsicPHYReg MII_PHYSID1 failed\n");
+		return -EIO;
+	}
+
+	*phy_id = (phy_reg & 0xffff) << 16;
+
+	/* Grab the bits from PHYIR2, and put them in the lower half */
+	ret = rtl8367c_getAsicPHYReg(addr, MII_PHYSID2, &phy_reg);
+
+	if (ret < 0)
+	{
+		pr_err("rtl8367b_getAsicPHYReg MII_PHYSID2 failed\n");
+		return -EIO;
+	}
+
+	*phy_id |= (phy_reg & 0xffff);
+
+	printk("%s: PHY addr[%d], get phy_id[0x%x]\n", __func__, addr, *phy_id);
+
+	return 0;
+}
+
+int rtl8367rb_init(void)
+{
+	int ret = -1;
+	rtk_port_mac_ability_t abi;
+	memset(&abi, 0, sizeof(rtk_port_mac_ability_t));
+	abi.forcemode = MAC_FORCE;
+	abi.speed =  PORT_SPEED_1000M;
+	abi.duplex = FULL_DUPLEX;
+	abi.link = PORT_LINKUP;
+	abi.nway = DISABLED;
+	abi.txpause = 1;
+	abi.rxpause = 1;
+
+	rtk_switch_init();
+
+	ret = rtk_port_macForceLinkExt_set(EXT_PORT0, MODE_EXT_RGMII, &abi);
+	if (ret < 0)
+	{
+		pr_err("rtk_port_macForceLinkExt_set failed\n");
+		return ret;
+	}
+
+	ret=rtk_port_phyEnableAll_set(1);
+	if (ret < 0)
+	{
+		pr_err("rtk_port_phyEnableAll_set\n");
+		return ret;
+	}
+
+	ret = rtk_port_rgmiiDelayExt_set(EXT_PORT0, 1, 1);
+	if (ret < 0)
+	{
+		pr_err("rtk_port_rgmiiDelayExt_set failed\n");
+		return ret;
+	}
+
+	// msleep(2000);
+	// phy_create_sysfs(phydev);
+	// ret = genphy_config_init(phydev);
+	// if (ret < 0)
+	// 	return ret;
+
+	return 0;
+}
 
 /**
  * get_phy_device - reads the specified PHY device and returns its @phy_device
@@ -355,12 +819,15 @@ static int get_phy_id(struct mii_bus *bus, int addr, u32 *phy_id,
  * Description: Reads the ID registers of the PHY at @addr on the
  *   @bus, then allocates and returns the phy_device to represent it.
  */
+extern struct mii_bus *rtl8761_bus;
 struct phy_device *get_phy_device(struct mii_bus *bus, int addr, bool is_c45)
 {
 	struct phy_c45_device_ids c45_ids = {0};
 	u32 phy_id = 0;
+
 	int r;
 
+#if 0
 	r = get_phy_id(bus, addr, &phy_id, is_c45, &c45_ids);
 	if (r)
 		return ERR_PTR(r);
@@ -368,6 +835,34 @@ struct phy_device *get_phy_device(struct mii_bus *bus, int addr, bool is_c45)
 	/* If the phy_id is mostly Fs, there is no device there */
 	if ((phy_id & 0x1fffffff) == 0x1fffffff)
 		return NULL;
+#endif
+
+	rtl8761_bus = bus;
+
+	if(addr != 0)		///only read 0
+		return NULL;
+
+	r = rtk8367rb_getphy_id(bus, addr, &phy_id, is_c45, &c45_ids);
+
+	if (r)
+		return ERR_PTR(r);
+
+	/* If the phy_id is mostly Fs, there is no device there */
+	if ((phy_id & 0x1fffffff) == 0x1fffffff)
+	{
+		return NULL;
+	}
+
+	if ((phy_id & 0xffff) == 0xffff)
+	{
+		return NULL;
+	}
+    if (phy_id == 0x0)
+	{
+		return NULL;
+	}
+
+	rtl8367rb_init();
 
 	return phy_device_create(bus, addr, phy_id, is_c45, &c45_ids);
 }
@@ -644,9 +1139,15 @@ int phy_attach_direct(struct net_device *dev, struct phy_device *phydev,
 	 */
 	if (!d->driver) {
 		if (phydev->is_c45)
+		{
+			printk("GENPHY_DRV_10G\n");
 			d->driver = &genphy_driver[GENPHY_DRV_10G].driver;
+		}
 		else
-			d->driver = &genphy_driver[GENPHY_DRV_1G].driver;
+		{
+			printk("RL8367_DRV\n");
+			d->driver = &genphy_driver[RL8367_DRV].driver;
+		}
 
 		err = d->driver->probe(d);
 		if (err >= 0)
@@ -669,13 +1170,15 @@ int phy_attach_direct(struct net_device *dev, struct phy_device *phydev,
 
 	phydev->interface = interface;
 
-	phydev->state = PHY_READY;
+	//phydev->state = PHY_READY;
+	phydev->state = PHY_FORCING;
 
 	/* Do initial configuration here, now that
 	 * we have certain key parameters
 	 * (dev_flags and interface)
 	 */
 	err = phy_init_hw(phydev);
+	printk("phy_init_hw [%d]\n", err);
 	if (err)
 		phy_detach(phydev);
 	else
@@ -939,6 +1442,8 @@ int genphy_config_aneg(struct phy_device *phydev)
 {
 	int result;
 
+	return 1;
+
 	if (AUTONEG_ENABLE != phydev->autoneg)
 		return genphy_setup_forced(phydev);
 
@@ -999,6 +1504,7 @@ static int gen10g_config_aneg(struct phy_device *phydev)
  */
 int genphy_update_link(struct phy_device *phydev)
 {
+#if 0
 	int status;
 
 	/* Do a fake read */
@@ -1014,6 +1520,8 @@ int genphy_update_link(struct phy_device *phydev)
 	if ((status & BMSR_LSTATUS) == 0)
 		phydev->link = 0;
 	else
+#endif
+
 		phydev->link = 1;
 
 	return 0;
@@ -1032,20 +1540,21 @@ EXPORT_SYMBOL(genphy_update_link);
 int genphy_read_status(struct phy_device *phydev)
 {
 	int adv;
-	int err;
+//	int err;
 	int lpa;
 	int lpagb = 0;
 	int common_adv;
 	int common_adv_gb = 0;
 
 	/* Update the link, but return if there was an error */
-	err = genphy_update_link(phydev);
-	if (err)
-		return err;
+	//err = genphy_update_link(phydev);
+	//if (err)
+	//	return err;
 
 	phydev->lp_advertising = 0;
 
-	if (AUTONEG_ENABLE == phydev->autoneg) {
+	//if (AUTONEG_ENABLE == phydev->autoneg) {
+	if (0) {
 		if (phydev->supported & (SUPPORTED_1000baseT_Half
 					| SUPPORTED_1000baseT_Full)) {
 			lpagb = phy_read(phydev, MII_STAT1000);
@@ -1097,11 +1606,13 @@ int genphy_read_status(struct phy_device *phydev)
 			phydev->asym_pause = lpa & LPA_PAUSE_ASYM ? 1 : 0;
 		}
 	} else {
-		int bmcr = phy_read(phydev, MII_BMCR);
+		//int bmcr = phy_read(phydev, MII_BMCR);
+		//if (bmcr < 0)
+		//	return bmcr;
+		phydev->duplex = DUPLEX_FULL;
+		phydev->speed = SPEED_1000;
 
-		if (bmcr < 0)
-			return bmcr;
-
+		#if 0
 		if (bmcr & BMCR_FULLDPLX)
 			phydev->duplex = DUPLEX_FULL;
 		else
@@ -1113,6 +1624,7 @@ int genphy_read_status(struct phy_device *phydev)
 			phydev->speed = SPEED_100;
 		else
 			phydev->speed = SPEED_10;
+		#endif
 
 		phydev->pause = 0;
 		phydev->asym_pause = 0;
@@ -1172,7 +1684,7 @@ EXPORT_SYMBOL(genphy_soft_reset);
 
 int genphy_config_init(struct phy_device *phydev)
 {
-	int val;
+	int val = 0;
 	u32 features;
 
 	features = (SUPPORTED_TP | SUPPORTED_MII
@@ -1180,12 +1692,12 @@ int genphy_config_init(struct phy_device *phydev)
 			SUPPORTED_BNC);
 
 	/* Do we support autonegotiation? */
-	val = phy_read(phydev, MII_BMSR);
-	if (val < 0)
-		return val;
+	// val = phy_read(phydev, MII_BMSR);
+	// if (val < 0)
+	// 	return val;
 
-	if (val & BMSR_ANEGCAPABLE)
-		features |= SUPPORTED_Autoneg;
+	// if (val & BMSR_ANEGCAPABLE)
+	// 	features |= SUPPORTED_Autoneg;
 
 	if (val & BMSR_100FULL)
 		features |= SUPPORTED_100baseT_Full;
@@ -1196,16 +1708,18 @@ int genphy_config_init(struct phy_device *phydev)
 	if (val & BMSR_10HALF)
 		features |= SUPPORTED_10baseT_Half;
 
-	if (val & BMSR_ESTATEN) {
-		val = phy_read(phydev, MII_ESTATUS);
-		if (val < 0)
-			return val;
+	// if (val & BMSR_ESTATEN) {
+	// 	val = phy_read(phydev, MII_ESTATUS);
+	// 	if (val < 0)
+	// 		return val;
 
-		if (val & ESTATUS_1000_TFULL)
-			features |= SUPPORTED_1000baseT_Full;
-		if (val & ESTATUS_1000_THALF)
-			features |= SUPPORTED_1000baseT_Half;
-	}
+	// 	if (val & ESTATUS_1000_TFULL)
+	// 		features |= SUPPORTED_1000baseT_Full;
+	// 	if (val & ESTATUS_1000_THALF)
+	// 		features |= SUPPORTED_1000baseT_Half;
+	// }
+
+	features |= SUPPORTED_1000baseT_Full;
 
 	phydev->supported &= features;
 	phydev->advertising &= features;
@@ -1269,8 +1783,45 @@ static int gen10g_resume(struct phy_device *phydev)
 	return 0;
 }
 
+static int rkl8367_soft_reset(struct phy_device *phydev)
+{
+	pr_err("rkl8367_soft_reset\n ");
+	return 0;
+}
+
+static int rkl8367_config_init(struct phy_device *phydev)
+{
+	return 0;
+}
+
+static int rkl8367_config_aneg(struct phy_device *phydev)
+{
+	return 0;
+}
+
+static int rkl8367_read_status(struct phy_device *phydev)
+{
+	return 0;
+}
+
+static int rkl8367_suspend(struct phy_device *phydev)
+{
+	return 0;
+}
+
+static int rkl8367_resume(struct phy_device *phydev)
+{
+	return 0;
+}
+
 static int __set_phy_supported(struct phy_device *phydev, u32 max_speed)
 {
+	/* The default values for phydev->supported are provided by the PHY
+	 * driver "features" member, we want to reset to sane defaults first
+	 * before supporting higher speeds.
+	 */
+	phydev->supported &= PHY_DEFAULT_FEATURES;
+
 	switch (max_speed) {
 	case SPEED_10:
 		phydev->supported &= ~PHY_100BT_FEATURES;
@@ -1359,6 +1910,8 @@ static int phy_probe(struct device *dev)
 	if (phydev->drv->probe)
 		err = phydev->drv->probe(phydev);
 
+	phy_create_sysfs(phydev);
+
 	mutex_unlock(&phydev->lock);
 
 	return err;
@@ -1368,7 +1921,8 @@ static int phy_remove(struct device *dev)
 {
 	struct phy_device *phydev = to_phy_device(dev);
 
-	cancel_delayed_work_sync(&phydev->state_queue);
+	//cancel_delayed_work_sync(&phydev->state_queue);
+	phy_remove_sysfs(phydev);
 
 	mutex_lock(&phydev->lock);
 	phydev->state = PHY_DOWN;
@@ -1441,10 +1995,10 @@ EXPORT_SYMBOL(phy_drivers_unregister);
 
 static struct phy_driver genphy_driver[] = {
 {
-	.phy_id		= 0xffffffff,
-	.phy_id_mask	= 0xffffffff,
+	.phy_id		= 0x00000000,
+	.phy_id_mask	= 0x00000000,
 	.name		= "Generic PHY",
-	.soft_reset	= genphy_no_soft_reset,
+	.soft_reset	= genphy_soft_reset,
 	.config_init	= genphy_config_init,
 	.features	= PHY_GBIT_FEATURES | SUPPORTED_MII |
 			  SUPPORTED_AUI | SUPPORTED_FIBRE |
@@ -1456,8 +2010,8 @@ static struct phy_driver genphy_driver[] = {
 	.resume		= genphy_resume,
 	.driver		= { .owner = THIS_MODULE, },
 }, {
-	.phy_id         = 0xffffffff,
-	.phy_id_mask    = 0xffffffff,
+	.phy_id         = 0x00000000,
+	.phy_id_mask    = 0x00000000,
 	.name           = "Generic 10G PHY",
 	.soft_reset	= gen10g_soft_reset,
 	.config_init    = gen10g_config_init,
@@ -1466,6 +2020,20 @@ static struct phy_driver genphy_driver[] = {
 	.read_status    = gen10g_read_status,
 	.suspend        = gen10g_suspend,
 	.resume         = gen10g_resume,
+	.driver         = {.owner = THIS_MODULE, },
+} ,{
+	.phy_id         = 0x001cc942,
+	.phy_id_mask    = 0x001fffff,
+	.name           = "rtl8367 PHY",
+	.soft_reset     = rkl8367_soft_reset,
+	.config_init    = rkl8367_config_init,
+	.features       = PHY_GBIT_FEATURES | SUPPORTED_MII |
+			  SUPPORTED_AUI | SUPPORTED_FIBRE |
+			  SUPPORTED_BNC,
+	.config_aneg    = rkl8367_config_aneg,
+	.read_status    = rkl8367_read_status,
+	.suspend        = rkl8367_suspend,
+	.resume         = rkl8367_resume,
 	.driver         = {.owner = THIS_MODULE, },
 } };
 

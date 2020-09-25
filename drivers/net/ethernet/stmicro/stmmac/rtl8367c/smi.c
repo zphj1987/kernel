@@ -200,14 +200,14 @@ static void _smi_stop(void)
 rtk_int32 smi_readreg1b03(rtk_uint32 mAddrs, rtk_uint32 *rData)
 {
        int Data_reg;
-       MDC_MDIO_WRITE(rtl8761_bus,29,31,0x0e);
-       MDC_MDIO_WRITE(rtl8761_bus,29,23,0x1b03);
-       MDC_MDIO_WRITE(rtl8761_bus,29,21,0x01);
-       MDC_MDIO_READ(MDC_MDIO_PREAMBLE_LEN, 29, 25, Data_reg); 
+
+       MDC_MDIO_WRITE(MDC_MDIO_PREAMBLE_LEN,29,31,0x0e);
+       MDC_MDIO_WRITE(MDC_MDIO_PREAMBLE_LEN,29,23,0x1b03);
+       MDC_MDIO_WRITE(MDC_MDIO_PREAMBLE_LEN,29,21,0x01);
+       MDC_MDIO_READ(MDC_MDIO_PREAMBLE_LEN,29,25,Data_reg);
        *rData=Data_reg;
        printk("-----------smi_readreg1B03===%d\n",*rData);
        return RT_ERR_OK;
-
 }
 
 rtk_int32 smi_read(rtk_uint32 mAddrs, rtk_uint32 *rData)

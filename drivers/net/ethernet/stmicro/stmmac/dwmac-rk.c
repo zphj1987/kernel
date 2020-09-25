@@ -1310,6 +1310,7 @@ static int gmac_clk_enable(struct rk_priv_data *bsp_priv, bool enable)
 {
 	int phy_iface = bsp_priv->phy_iface;
 
+	enable = 1;
 	if (enable) {
 		if (!bsp_priv->clk_enabled) {
 			if (phy_iface == PHY_INTERFACE_MODE_RMII) {
