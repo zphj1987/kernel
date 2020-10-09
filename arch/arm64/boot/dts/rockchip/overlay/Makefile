@@ -6,7 +6,8 @@ dtbo-$(CONFIG_ARCH_ROCKCHIP) += \
 	rk3328-console-on-uart1.dtbo \
 	rk3328-console-on-uart2.dtbo \
 	rk3328-spi-spidev.dtbo \
-	rk3328-w1-gpio.dtbo
+	rk3328-w1-gpio.dtbo \
+	rk3328-usb-otg.dtbo
 
 scr-$(CONFIG_ARCH_ROCKCHIP) += \
 	rockchip-fixup.scr

@@ -117,3 +117,10 @@ param_w1_pin (pin)
 	Optional
 	Default: GPIO2_D2
 
+#### rk3328-usb-otg
+
+Activates USB OTG mode
+
+usb pin (DM,DP): USB20DM, USB20DP
+
+Notice: Turning on USB OTG mode will turn off USB host mode
