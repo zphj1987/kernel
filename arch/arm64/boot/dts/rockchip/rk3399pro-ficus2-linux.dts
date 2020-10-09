@@ -648,6 +648,10 @@
 	status = "okay";
 };
 
+&uart2 {
+	status = "okay";
+};
+
 &tcphy0 {
 	status = "okay";
 };
