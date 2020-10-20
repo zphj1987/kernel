@@ -47,5 +47,6 @@ struct rkispp_hw_dev {
 	atomic_t refcnt;
 	bool is_idle;
 	bool is_single;
+	struct rkisp_ispp_reg *reg_buf;
 };
 #endif

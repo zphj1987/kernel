@@ -72,6 +72,7 @@ struct rkisp_isp_params_vdev {
 	struct isp2x_hdrtmo_cfg cur_hdrtmo;
 	struct isp2x_hdrmge_cfg cur_hdrmge;
 	struct isp2x_lsc_cfg cur_lsccfg;
+	struct sensor_exposure_cfg exposure;
 };
 
 /* config params before ISP streaming */
