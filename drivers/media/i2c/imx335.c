@@ -856,7 +856,7 @@ static int imx335_set_hdrae(struct imx335 *imx335,
 	struct i2c_client *client = imx335->client;
 	u32 l_exp_time, m_exp_time, s_exp_time;
 	u32 l_a_gain, m_a_gain, s_a_gain;
-	u32 shr1, shr0, rhs1, rhs1_max, rhs1_min;
+	int shr1, shr0, rhs1, rhs1_max, rhs1_min;
 	static int rhs1_old = IMX335_RHS1_DEFAULT;
 	int ret = 0;
 	u32 fsc;
@@ -921,12 +921,18 @@ static int imx335_set_hdrae(struct imx335 *imx335,
 	shr0 = fsc - l_exp_time;
 
 	rhs1_max = min(RHS1_MAX, shr0 - SHR1_MIN);
-	rhs1_min = max(SHR1_MIN + 4u, rhs1_old + 2 * BRL - fsc + 2);
-	rhs1 = clamp(SHR1_MIN + s_exp_time, rhs1_min, rhs1_max);
+	rhs1_max = (rhs1_max & ~0x7) + 2;
+	rhs1_min = (SHR1_MIN + 4u + 7u) / 8 * 8 + 2;
+
+	rhs1 = SHR1_MIN + s_exp_time;
+	if (rhs1 > rhs1_max)
+		rhs1 = rhs1_max;
+	if (rhs1 < rhs1_min)
+		rhs1 = rhs1_min;
 	rhs1 = (rhs1 & ~0x7) + 2; /* shall be 8n + 2 */
 	dev_dbg(&client->dev,
-		"line(%d) rhs1 %d, short time %d rhs1_old %d, rhs1_new %d\n",
-		__LINE__, rhs1, s_exp_time, rhs1_old, rhs1);
+		"line(%d) rhs1 %d, short time %d rhs1_old %d, rhs1_new %d, rhs1_min %d rhs1_max %d\n",
+		__LINE__, rhs1, s_exp_time, rhs1_old, rhs1, rhs1_min, rhs1_max);
 
 	rhs1_old = rhs1;
 
