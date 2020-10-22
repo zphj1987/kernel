@@ -323,12 +323,10 @@ static void mpp_task_timeout_work(struct work_struct *work_s)
 					     struct mpp_task,
 					     timeout_work);
 
-	if (test_and_set_bit(TASK_STATE_HANDLE, &task->state)) {
-		mpp_err("task is handle\n");
+	if (test_and_set_bit(TASK_STATE_HANDLE, &task->state))
 		return;
-	}
 
-	mpp_err("task %p processing time out!\n", task);
+	mpp_err("task %p processing timed out!\n", task);
 	if (!task->session) {
 		mpp_err("task %p, task->session is null.\n", task);
 		return;
@@ -1701,31 +1699,26 @@ int mpp_dev_remove(struct mpp_dev *mpp)
 
 irqreturn_t mpp_dev_irq(int irq, void *param)
 {
-	int ret = 0;
+	irqreturn_t ret = IRQ_NONE;
 	struct mpp_dev *mpp = param;
 	struct mpp_task *task = mpp->cur_task;
-	irqreturn_t irq_ret = IRQ_NONE;
 
 	if (task) {
 		/* if wait or delayed work timeout, abort request will turn on,
 		 * isr should not to response, and handle it in delayed work
 		 */
-		if (test_and_set_bit(TASK_STATE_HANDLE, &task->state)) {
-			mpp_err("error, task is handle, irq_status %08x\n", mpp->irq_status);
-			goto done;
-		}
+		if (test_and_set_bit(TASK_STATE_HANDLE, &task->state))
+			return IRQ_HANDLED;
 		cancel_delayed_work(&task->timeout_work);
-		/* normal condition, set state and wake up isr thread */
+
 		set_bit(TASK_STATE_IRQ, &task->state);
-		ret = true;
+		if (mpp->dev_ops->irq)
+			ret = mpp->dev_ops->irq(mpp);
 	} else {
 		mpp_err("error, task is null\n");
 	}
-done:
-	if (mpp->dev_ops->irq)
-		irq_ret = mpp->dev_ops->irq(mpp);
 
-	return ret ? irq_ret : IRQ_HANDLED;
+	return ret;
 }
 
 irqreturn_t mpp_dev_isr_sched(int irq, void *param)
