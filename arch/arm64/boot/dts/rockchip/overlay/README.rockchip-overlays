@@ -124,3 +124,11 @@ Activates USB OTG mode
 usb pin (DM,DP): USB20DM, USB20DP
 
 Notice: Turning on USB OTG mode will turn off USB host mode
+
+#### rk3328-rock-pi-e-model-v11
+
+Mark the hardware as model V11
+
+View the path of the model name: /proc/device-tree/model
+
+Notice: The model name will be changed to "Radxa ROCK Pi E V11".
