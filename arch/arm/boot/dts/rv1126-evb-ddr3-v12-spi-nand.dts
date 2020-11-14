@@ -15,3 +15,6 @@
 	};
 };
 
+&nandc {
+    status = "okay";
+};

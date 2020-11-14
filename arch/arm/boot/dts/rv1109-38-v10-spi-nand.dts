@@ -199,6 +199,10 @@
 	};
 };
 
+&nandc {
+    status = "okay";
+};
+
 &npu {
 	npu-supply = <&vdd_logic_npu_vepu_fixed>;
 };
