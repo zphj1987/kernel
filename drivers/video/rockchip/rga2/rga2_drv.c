@@ -54,6 +54,10 @@
 #include "rga2_mmu_info.h"
 #include "RGA2_API.h"
 
+#if IS_ENABLED(CONFIG_ION_ROCKCHIP) && (LINUX_VERSION_CODE < KERNEL_VERSION(4, 4, 0))
+#include <linux/rockchip_ion.h>
+#endif
+
 #if ((defined(CONFIG_RK_IOMMU) || defined(CONFIG_ROCKCHIP_IOMMU)) && defined(CONFIG_ION_ROCKCHIP))
 #define CONFIG_RGA_IOMMU
 #endif
