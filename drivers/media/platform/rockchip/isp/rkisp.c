@@ -1859,6 +1859,7 @@ static long rkisp_ioctl(struct v4l2_subdev *sd, unsigned int cmd, void *arg)
 	struct rkisp_thunderboot_resmem_head *head;
 	struct rkisp_ldchbuf_info *ldchbuf;
 	struct rkisp_ldchbuf_size *ldchsize;
+	struct rkisp_thunderboot_shmem *shmem;
 	void *resmem_va;
 	long ret = 0;
 
@@ -1917,6 +1918,10 @@ static long rkisp_ioctl(struct v4l2_subdev *sd, unsigned int cmd, void *arg)
 		ldchsize = (struct rkisp_ldchbuf_size *)arg;
 		rkisp_params_set_ldchbuf_size(&isp_dev->params_vdev, ldchsize);
 		break;
+	case RKISP_CMD_GET_SHM_BUFFD:
+		shmem = (struct rkisp_thunderboot_shmem *)arg;
+		ret = rkisp_tb_shm_ioctl(shmem);
+		break;
 	default:
 		ret = -ENOIOCTLCMD;
 	}
@@ -1933,6 +1938,7 @@ static long rkisp_compat_ioctl32(struct v4l2_subdev *sd,
 	struct rkisp_thunderboot_resmem resmem;
 	struct rkisp_ldchbuf_info ldchbuf;
 	struct rkisp_ldchbuf_size ldchsize;
+	struct rkisp_thunderboot_shmem shmem;
 	long ret = 0;
 	int mode;
 
@@ -1967,6 +1973,14 @@ static long rkisp_compat_ioctl32(struct v4l2_subdev *sd,
 		ret = copy_from_user(&ldchsize, up, sizeof(ldchsize));
 		if (!ret)
 			ret = rkisp_ioctl(sd, cmd, &ldchsize);
+		break;
+	case RKISP_CMD_GET_SHM_BUFFD:
+		ret = copy_from_user(&shmem, up, sizeof(shmem));
+		if (!ret) {
+			ret = rkisp_ioctl(sd, cmd, &shmem);
+			if (!ret)
+				ret = copy_to_user(up, &shmem, sizeof(shmem));
+		}
 		break;
 	default:
 		ret = -ENOIOCTLCMD;
