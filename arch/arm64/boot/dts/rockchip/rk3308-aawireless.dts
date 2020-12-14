@@ -152,7 +152,7 @@
 		rockchip,grf = <&grf>;
 		pinctrl-names = "default";
 		pinctrl-0 = <&wifi_wake_host>;
-		wifi_chip_type = "ap6255";
+		wifi_chip_type = "ap6256";
 		WIFI,host_wake_irq = <&gpio0 RK_PA0 GPIO_ACTIVE_HIGH>;
 		status = "okay";
 	};
@@ -173,6 +173,27 @@
 			label = "rockpis:blue:user";
 			gpios = <&gpio0 5 GPIO_ACTIVE_HIGH>;
 			linux,default-trigger = "heartbeat";
+			default-state = "on";
+		};
+		
+		rgb-red {
+			label = "rockpis:rgb-red:user";
+			gpios = <&gpio4 28 GPIO_ACTIVE_LOW>;
+			linux,default-trigger = "default-on";
+			default-state = "on";
+		};
+
+		rgb-blue {
+			label = "rockpis:rgb-blue:user";
+			gpios = <&gpio4 24 GPIO_ACTIVE_HIGH>;
+			linux,default-trigger = "default-on";
+			default-state = "on";
+		};
+
+		rgb-green {
+			label = "rockpis:rgb-green:user";
+			gpios = <&gpio4 25 GPIO_ACTIVE_HIGH>;
+			linux,default-trigger = "default-on";
 			default-state = "on";
 		};
 	};
@@ -207,21 +228,21 @@
 	status = "okay";
 };
 
-&sdmmc {
-	max-frequeency = <150000000>;
-	supports-sd;
-	bus-width = <4>;
-	cap-mmc-highspeed;
-	cap-sd-highspeed;
-	disable-wp;
-	num-slots = <1>;
-	vmmc-supply = <&vcc_sd>;
-	vqmmc-supply = <&vccio_sd>;
-	pinctrl-names = "default";
-	pinctrl-0 = <&sdmmc_clk &sdmmc_cmd &sdmmc_det &sdmmc_bus4>;
-	ard-detect-delay = <800>;
-	status = "okay";
-};
+// &sdmmc {
+// 	max-frequeency = <150000000>;
+// 	supports-sd;
+// 	bus-width = <4>;
+// 	cap-mmc-highspeed;
+// 	cap-sd-highspeed;
+// 	disable-wp;
+// 	num-slots = <1>;
+// 	vmmc-supply = <&vcc_sd>;
+// 	vqmmc-supply = <&vccio_sd>;
+// 	pinctrl-names = "default";
+// 	pinctrl-0 = <&sdmmc_clk &sdmmc_cmd &sdmmc_det &sdmmc_bus4>;
+// 	ard-detect-delay = <800>;
+// 	status = "okay";
+// };
 
 &io_domains {
 	status = "okay";
@@ -350,5 +371,16 @@
 &saradc {
 	status = "okay";
 	vref-supply = <&vcc_1v8>;
+};
+
+&uart0 {
+    status = "okay";
+};
+
+&fiq_debugger{
+    status = "okay";
+    rockchip,serial-id = <0>;
+    pinctrl-names = "default";
+    inctrl-0 = <&uart0_xfer>;
 };
 
