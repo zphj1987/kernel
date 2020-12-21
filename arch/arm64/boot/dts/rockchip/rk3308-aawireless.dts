@@ -185,18 +185,44 @@
 
 		rgb-blue {
 			label = "rockpis:rgb-blue:user";
-			gpios = <&gpio4 24 GPIO_ACTIVE_HIGH>;
+			gpios = <&gpio4 24 GPIO_ACTIVE_LOW>;
 			linux,default-trigger = "default-on";
 			default-state = "on";
 		};
 
 		rgb-green {
 			label = "rockpis:rgb-green:user";
-			gpios = <&gpio4 25 GPIO_ACTIVE_HIGH>;
+			gpios = <&gpio4 25 GPIO_ACTIVE_LOW>;
 			linux,default-trigger = "default-on";
 			default-state = "on";
 		};
 	};
+
+    gpio-keys {
+        compatible = "gpio-keys";
+        #address-cells = <1>;
+        #size-cells = <0>;
+        autorepeat;
+        pinctrl-names = "default";
+        pinctrl-0 = <&pwrbtn>;
+                 
+        F15 {
+             gpios = <&gpio1 10 GPIO_ACTIVE_LOW>;
+             linux,code = <KEY_F15>;
+             label = "GPIO Key F15";
+             linux,input-type = <1>;
+             gpio-key,wakeup = <1>;
+             debounce-interval = <100>;
+        };
+        F16 {
+             gpios = <&gpio1 11 GPIO_ACTIVE_LOW>;
+             linux,code = <KEY_F16>;
+             label = "GPIO Key F16";
+             linux,input-type = <1>;
+             gpio-key,wakeup = <1>;
+             debounce-interval = <100>;
+        };
+    };
 
 	acodec_sound: acodec-sound {
 		compatible = "rockchip,multicodecs-card";
@@ -269,6 +295,15 @@
 			rockchip,pins = <0 RK_PC0 RK_FUNC_GPIO &pcfg_pull_up>;
 		};
 	};
+
+    key {
+        pwrbtn:pwrbtn {
+            rockchip,pins = 
+                <1 RK_PB2 RK_FUNC_GPIO &pcfg_pull_up>,  //GPIO1_B2
+                <1 RK_PB3 RK_FUNC_GPIO &pcfg_pull_up>;  //GPIO1_B3
+        };
+    };
+
 	usb {
 		otg_vbus_drv: otg-vbus-drv {
 			rockchip,pins = <0 RK_PC5 RK_FUNC_GPIO &pcfg_pull_none>;
