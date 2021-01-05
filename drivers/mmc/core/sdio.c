@@ -557,6 +557,40 @@ static void mmc_sdio_resend_if_cond(struct mmc_host *host,
 	mmc_remove_card(card);
 }
 
+#if (defined(CONFIG_SDIO_KEEPALIVE) && defined(CONFIG_SDIO_CIS_CYW43438))
+#define SDIO_FUNC_1							1
+#define SBSDIO_FUNC1_SLEEPCSR				0x1001F
+#define SBSDIO_FUNC1_SLEEPCSR_KSO_MASK		0x01
+#define SBSDIO_FUNC1_SLEEPCSR_KSO_EN		1
+#define SBSDIO_FUNC1_SLEEPCSR_DEVON_MASK	0x02
+#define MAX_KSO_ATTEMPTS					50
+
+static int sdio_kso_enable(struct mmc_card *card)
+{
+	int try_cnt = 0;
+	int ret;
+	u8 rd_val;
+	u8 bmask = SBSDIO_FUNC1_SLEEPCSR_KSO_MASK | SBSDIO_FUNC1_SLEEPCSR_DEVON_MASK;
+	u8 wr_val = SBSDIO_FUNC1_SLEEPCSR_KSO_EN;
+
+	mmc_io_rw_direct(card, 1, SDIO_FUNC_1, SBSDIO_FUNC1_SLEEPCSR, wr_val, NULL);
+
+	mmc_delay(3);
+
+	do {
+		ret = mmc_io_rw_direct(card, 0, SDIO_FUNC_1, SBSDIO_FUNC1_SLEEPCSR, 0, &rd_val);
+		if ((ret == 0) && ((rd_val & bmask) == bmask))
+			break;
+
+		mmc_delay(1);
+
+		mmc_io_rw_direct(card, 1, SDIO_FUNC_1, SBSDIO_FUNC1_SLEEPCSR, wr_val, NULL);
+	} while (try_cnt++ < MAX_KSO_ATTEMPTS);
+
+	return ret;
+}
+#endif /* CONFIG_SDIO_KEEPALIVE */
+
 /*
  * Handle the detection and initialisation of a card.
  *
@@ -624,6 +658,12 @@ try_again:
 		err = PTR_ERR(card);
 		goto err;
 	}
+
+#if (defined(CONFIG_SDIO_KEEPALIVE) && defined(CONFIG_SDIO_CIS_CYW43438))
+	if (host->chip_alive) {
+		sdio_kso_enable(card);
+	}
+#endif /* CONFIG_SDIO_KEEPALIVE */
 
 	if ((rocr & R4_MEMORY_PRESENT) &&
 	    mmc_sd_get_cid(host, ocr & rocr, card->raw_cid, NULL) == 0) {
