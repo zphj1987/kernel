@@ -787,7 +787,8 @@ static int rfkill_wlan_probe(struct platform_device *pdev)
 		gpio_direction_output(pdata->vbat_n.io, pdata->vbat_n.enable);
 
 #ifdef CONFIG_SDIO_KEEPALIVE
-	if (primary_sdio_host && primary_sdio_host->support_chip_alive)
+	if (gpio_is_valid(pdata->power_n.io) &&
+	    primary_sdio_host && primary_sdio_host->support_chip_alive)
 		gpio_direction_output(pdata->power_n.io, pdata->power_n.enable);
 #else
 	if (gpio_is_valid(pdata->power_n.io))
