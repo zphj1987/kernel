@@ -228,6 +228,45 @@ static int sfc_nand_write_feature(u32 addr, u8 status)
 	return ret;
 }
 
+/*
+ * 0xA0 Feature register
+ * Addr: 5   4  3   2   1
+ * fea : bp2 bp bp0 inv cmp
+ */
+static int sfc_nand_block_protect1(u32 addr)
+{
+	u8 status;
+
+	if (addr < 0x400)
+		status = 0 << 3 | 0 << 2 | 0 << 1;
+	else if (addr < 0x800)
+		status = 1 << 3 | 1 << 2 | 0 << 1;
+	else if (addr < 0x1000)
+		status = 2 << 3 | 1 << 2 | 0 << 1;
+	else if (addr < 0x2000)
+		status = 3 << 3 | 1 << 2 | 0 << 1;
+	else if (addr < 0x4000)
+		status = 4 << 3 | 1 << 2 | 0 << 1;
+	else if (addr < 0x8000)
+		status = 5 << 3 | 1 << 2 | 0 << 1;
+	else if (addr < 0xC000)
+		status = 6 << 3 | 1 << 2 | 0 << 1;
+	else if (addr < 0xE000)
+		status = 5 << 3 | 0 << 2 | 1 << 1;
+	else if (addr < 0xF800)
+		status = 3 << 3 | 0 << 2 | 1 << 1;
+	else if (addr < 0xFC00)
+		status = 2 << 3 | 0 << 2 | 1 << 1;
+	else
+		status = 1 << 3 | 0 << 2 | 1 << 1;
+	if (sfc_nand_dev.bp_status == status) {
+		return 0;
+	} else {
+		sfc_nand_dev.bp_status = status;
+		return sfc_nand_write_feature(0xA0, status);
+	}
+}
+
 static int sfc_nand_wait_busy(u8 *data, int timeout)
 {
 	int ret;
@@ -572,6 +611,9 @@ u32 sfc_nand_erase_block(u8 cs, u32 addr)
 	struct rk_sfc_op op;
 	u8 status;
 
+	if (sfc_nand_dev.bp_setting)
+		sfc_nand_dev.bp_setting(addr);
+
 	rkflash_print_dio("%s %x\n", __func__, addr);
 	op.sfcmd.d32 = 0;
 	op.sfcmd.b.cmd = 0xd8;
@@ -626,6 +668,9 @@ u32 sfc_nand_prog_page_raw(u8 cs, u32 addr, u32 *p_page_buf)
 	u8 status;
 	u32 page_size = SFC_NAND_SECTOR_FULL_SIZE * p_nand_info->sec_per_page;
 	u32 data_area_size = SFC_NAND_SECTOR_SIZE * p_nand_info->sec_per_page;
+
+	if (sfc_nand_dev.bp_setting)
+		sfc_nand_dev.bp_setting(addr);
 
 	rkflash_print_dio("%s %x %x\n", __func__, addr, p_page_buf[0]);
 	sfc_nand_write_en();
@@ -970,6 +1015,12 @@ u32 sfc_nand_init(void)
 		sfc_nand_dev.prog_lines = DATA_LINES_X4;
 		sfc_nand_dev.page_prog_cmd = 0x32;
 	}
+
+	/* Add block protect */
+	sfc_nand_dev.bp_setting = NULL;
+	if (sfc_nand_dev.manufacturer == MID_GIGADEV &&
+	    sfc_nand_dev.mem_type == 0x51)
+		sfc_nand_dev.bp_setting = sfc_nand_block_protect1;
 
 	sfc_nand_read_feature(0xA0, &status);
 	rkflash_print_info("sfc_nand A0 = 0x%x\n", status);

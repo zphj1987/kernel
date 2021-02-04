@@ -83,6 +83,8 @@ struct SFNAND_DEV {
 	u8 page_read_cmd;
 	u8 page_prog_cmd;
 	u8 *recheck_buffer;
+	u8 bp_status;
+	int (*bp_setting)(u32 addr);
 };
 
 struct nand_mega_area {
