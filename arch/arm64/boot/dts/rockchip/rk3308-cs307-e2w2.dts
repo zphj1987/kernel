@@ -1,0 +1,21 @@
+/dts-v1/;
+
+#include "rk3308-cs307.dtsi"
+
+/ {
+	model = "Radxa CS307-E2W2";
+};
+
+&wireless_wlan {
+    wifi_chip_type = "ap6255";
+    status = "okay";
+};
+
+&wireless_bluetooth {
+    status = "okay";
+};
+
+&emmc {
+	mmc-hs200-3_3v;
+	status = "okay";
+};
