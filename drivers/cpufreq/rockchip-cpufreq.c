@@ -155,6 +155,19 @@ static int rk3399_get_soc_info(struct device *dev, struct device_node *np,
 		return 0;
 
 	if (of_property_match_string(np, "nvmem-cell-names",
+				     "performance") >= 0) {
+		ret = rockchip_get_efuse_value(np, "performance", &value);
+		if (ret) {
+			dev_err(dev, "Failed to get soc performance value\n");
+			goto out;
+		}
+		if (value == 0x01) {
+			*bin = 2;
+			goto out;
+		}
+	}
+
+	if (of_property_match_string(np, "nvmem-cell-names",
 				     "specification_serial_number") >= 0) {
 		ret = rockchip_get_efuse_value(np,
 					       "specification_serial_number",
