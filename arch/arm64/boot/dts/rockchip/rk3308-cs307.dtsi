@@ -12,6 +12,10 @@
 / {
 	model = "Radxa CS307";
 	compatible = "radxa,cs307", "rockchip,rk3308";
+
+	chosen {	
+		bootargs = "append  earlyprintk console=ttyFIQ0,1500000n8 rw root=/dev/mmcblk0p6 rootfstype=squashfs init=/sbin/init rootwait";
+	};
 	
 	sdio_pwrseq: sdio-pwrseq {
 		compatible = "mmc-pwrseq-simple";

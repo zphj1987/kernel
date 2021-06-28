@@ -8,6 +8,7 @@ dtb-$(CONFIG_ARCH_ROCKCHIP) += rk3308-cs307-e1w1.dtb
 dtb-$(CONFIG_ARCH_ROCKCHIP) += rk3308-cs307-e1w2.dtb
 dtb-$(CONFIG_ARCH_ROCKCHIP) += rk3308-cs307-e2w2.dtb
 dtb-$(CONFIG_ARCH_ROCKCHIP) += rk3308-cs307-e2w3.dtb
+dtb-$(CONFIG_ARCH_ROCKCHIP) += rk3308-cs307-e2w4.dtb
 dtb-$(CONFIG_ARCH_ROCKCHIP) += rk3308-evb-amic-v10.dtb
 dtb-$(CONFIG_ARCH_ROCKCHIP) += rk3308-evb-amic-v11.dtb
 dtb-$(CONFIG_ARCH_ROCKCHIP) += rk3308-evb-amic-v13.dtb
