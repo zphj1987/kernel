@@ -45,7 +45,7 @@
 
 &gmac2io {
 	snps,reset-delays-us = <0 20000 100000>;
-	tx_delay = <0x24>;
-	rx_delay = <0x11>;
+	tx_delay = <0x1a>;
+	rx_delay = <0x14>;
 };
 
