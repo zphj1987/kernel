@@ -98,8 +98,16 @@
 		compatible = "operating-points-v2";
 		opp-shared;
 
+		clocks = <&cru PLL_APLL>;
+		rockchip,bin-scaling-sel = <
+			0	13
+			1	19
+		>;
+		rockchip,bin-voltage-sel = <
+			1	6
+		>;
 		rockchip,temp-hysteresis = <5000>;
-		rockchip,low-temp = <0>;
+		rockchip,low-temp = <5>;
 		rockchip,low-temp-min-volt = <1000000>;
 		rockchip,max-volt = <1340000>;
 		rockchip,low-temp-adjust-volt = <
@@ -108,30 +116,34 @@
 		>;
 
 		rockchip,evb-irdrop = <25000>;
-		nvmem-cells = <&cpu_leakage>;
-		nvmem-cell-names = "leakage";
+		nvmem-cells = <&cpu_leakage>, <&cpu_performance>;
+		nvmem-cell-names = "leakage", "performance";
 
 		rockchip,thermal-zone = "soc-thermal";
 
 		opp-408000000 {
 			opp-hz = /bits/ 64 <408000000>;
 			opp-microvolt = <950000 950000 1340000>;
+			opp-microvolt-L6 = <1025000 1025000 1340000>;
 			clock-latency-ns = <40000>;
 			opp-suspend;
 		};
 		opp-600000000 {
 			opp-hz = /bits/ 64 <600000000>;
 			opp-microvolt = <950000 950000 1340000>;
+			opp-microvolt-L6 = <1025000 1025000 1340000>;
 			clock-latency-ns = <40000>;
 		};
 		opp-816000000 {
 			opp-hz = /bits/ 64 <816000000>;
 			opp-microvolt = <1025000 1025000 1340000>;
+			opp-microvolt-L6 = <1100000 1100000 1340000>;
 			clock-latency-ns = <40000>;
 		};
 		opp-1008000000 {
 			opp-hz = /bits/ 64 <1008000000>;
 			opp-microvolt = <1125000 1125000 1340000>;
+			opp-microvolt-L6 = <1200000 1200000 1340000>;
 			clock-latency-ns = <40000>;
 		};
 		opp-1200000000 {
@@ -819,6 +831,10 @@
 		};
 		logic_leakage: logic-leakage@18 {
 			reg = <0x18 0x1>;
+		};
+		cpu_performance: cpu-performance@1e {
+			reg = <0x1e 0x1>;
+			bits = <4 3>;
 		};
 	};
 
