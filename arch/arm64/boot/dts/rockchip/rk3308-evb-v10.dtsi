@@ -275,6 +275,13 @@
 	cpu-supply = <&vdd_core>;
 };
 
+&cpu0_opp_table {
+	/* Since vdd_log and vdd_core use same regulator */
+	opp-1008000000 {
+		status = "disabled";
+	};
+};
+
 &dmc {
 	center-supply = <&vdd_core>;
 	status = "okay";
