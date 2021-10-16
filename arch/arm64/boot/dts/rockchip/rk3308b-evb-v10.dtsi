@@ -306,10 +306,10 @@
 
 	vccio0-supply = <&vcc_io>;
 	vccio1-supply = <&vcc_io>;
-	vccio2-supply = <&vccio_sdio>;
-	vccio3-supply = <&vccio_flash>;
+	vccio2-supply = <&vcc_io>;
+	vccio3-supply = <&vcc_io>;
 	vccio4-supply = <&vcc_io>;
-	vccio5-supply = <&vccio_sdio>;
+	vccio5-supply = <&vcc_io>;
 };
 
 &i2c1 {

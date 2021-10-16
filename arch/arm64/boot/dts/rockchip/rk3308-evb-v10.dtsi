@@ -320,9 +320,9 @@
 
 	vccio0-supply = <&vcc_io>;
 	vccio1-supply = <&vcc_io>;
-	vccio2-supply = <&vcc_1v8>;
-	vccio3-supply = <&vccio_flash>;
-	vccio4-supply = <&vccio_sdio>;
+	vccio2-supply = <&vcc_io>;
+	vccio3-supply = <&vcc_io>;
+	vccio4-supply = <&vcc_io>;
 	vccio5-supply = <&vcc_io>;
 };
 
