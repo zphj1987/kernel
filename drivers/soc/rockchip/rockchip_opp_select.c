@@ -1051,7 +1051,9 @@ rockchip_register_thermal_notifier(struct device *dev,
 	struct device_node *np;
 	struct thermal_zone_device *tz;
 	struct thermal_opp_info *info = NULL;
+	unsigned long high_temp_max_freq;
 	const char *tz_name;
+	u32 value;
 
 	np = of_parse_phandle(dev->of_node, "operating-points-v2", 0);
 	if (!np) {
@@ -1089,6 +1091,15 @@ rockchip_register_thermal_notifier(struct device *dev,
 				 &info->high_temp_max_volt))
 		info->high_temp_max_volt = INT_MAX;
 	rockchip_init_temp_opp_table(info);
+	if (!of_property_read_u32(np, "rockchip,high-temp-max-freq", &value)) {
+		high_temp_max_freq = value * 1000;
+		if (info->high_limit)
+			info->high_limit = min(high_temp_max_freq,
+					       info->high_limit);
+		else
+			info->high_limit = high_temp_max_freq;
+	}
+
 	dev_info(dev, "l=%d h=%d hyst=%d l_limit=%lu h_limit=%lu\n",
 		 info->low_temp, info->high_temp, info->temp_hysteresis,
 		 info->low_limit, info->high_limit);
