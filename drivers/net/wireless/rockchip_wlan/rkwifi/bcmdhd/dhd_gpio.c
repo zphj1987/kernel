@@ -1,13 +1,8 @@
-/* SPDX-License-Identifier: GPL-2.0 */
+
 #include <osl.h>
 #include <dhd_linux.h>
 #include <linux/gpio.h>
 #include <linux/rfkill-wlan.h>
-
-#ifdef CUSTOMER_HW_PLATFORM
-#include <plat/sdhci.h>
-#define	sdmmc_channel	sdmmc_device_mmc0
-#endif /* CUSTOMER_HW_PLATFORM */
 
 #if defined(BUS_POWER_RESTORE) && defined(BCMSDIO)
 #include <linux/mmc/core.h>
@@ -136,18 +131,29 @@ static int dhd_wlan_set_carddetect(int present)
 	return err;
 }
 
-static int dhd_wlan_get_mac_addr(unsigned char *buf)
+static int dhd_wlan_get_mac_addr(unsigned char *buf
+#ifdef CUSTOM_MULTI_MAC
+	, char *name
+#endif
+)
 {
 	int err = 0;
 
-	printf("======== %s ========\n", __FUNCTION__);
+#ifdef CUSTOM_MULTI_MAC
+	if (!strcmp("wlan1", name)) {
 #ifdef EXAMPLE_GET_MAC
-	/* EXAMPLE code */
-	{
 		struct ether_addr ea_example = {{0x00, 0x11, 0x22, 0x33, 0x44, 0xFF}};
 		bcopy((char *)&ea_example, buf, sizeof(struct ether_addr));
-	}
 #endif /* EXAMPLE_GET_MAC */
+	} else
+#endif /* CUSTOM_MULTI_MAC */
+	{
+#ifdef EXAMPLE_GET_MAC
+		struct ether_addr ea_example = {{0x02, 0x11, 0x22, 0x33, 0x44, 0x55}};
+		bcopy((char *)&ea_example, buf, sizeof(struct ether_addr));
+#endif /* EXAMPLE_GET_MAC */
+	}
+
 	err = rockchip_wifi_mac_addr(buf);
 #ifdef EXAMPLE_GET_MAC_VER2
 	/* EXAMPLE code */
@@ -163,6 +169,8 @@ static int dhd_wlan_get_mac_addr(unsigned char *buf)
 		bcopy(macpad, buf+6, sizeof(macpad));
 	}
 #endif /* EXAMPLE_GET_MAC_VER2 */
+
+	printf("======== %s err=%d ========\n", __FUNCTION__, err);
 
 	return err;
 }
@@ -242,7 +250,7 @@ int dhd_wlan_init_gpio(void)
 #ifdef CUSTOMER_OOB
 	int host_oob_irq = -1;
 	uint host_oob_irq_flags = 0;
-	int irq_flags = -1;
+	int irq_flags;
 #endif
 
 	/* Please check your schematic and fill right GPIO number which connected to
