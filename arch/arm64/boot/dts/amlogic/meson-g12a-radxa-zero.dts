@@ -166,6 +166,10 @@
 				       <393216000>;
 		status = "okay";
 
+		dai-link-0 {
+			sound-dai = <&frddr_a>;
+		};
+
 		dai-link-1 {
 			sound-dai = <&frddr_b>;
 		};
