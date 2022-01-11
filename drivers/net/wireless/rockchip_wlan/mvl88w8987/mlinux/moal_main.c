@@ -2775,7 +2775,7 @@ done:
 	return status;
 }
 
-#ifdef CONFIG_RPS
+#ifndef CONFIG_RPS
 static ssize_t woal_set_rps_map(struct netdev_rx_queue *queue, const char *buf,
 				size_t len)
 {
@@ -2963,7 +2963,7 @@ static mlan_status woal_add_card_dpc(moal_handle *handle)
 		woal_set_uap_operation_ctrl(handle);
 #endif
 
-#ifdef CONFIG_RPS
+#ifndef CONFIG_RPS
 	if (moal_extflg_isset(handle, EXT_RPS)) {
 		moal_private *priv_rps =
 			woal_get_priv_bss_type(handle, MLAN_BSS_TYPE_STA);
