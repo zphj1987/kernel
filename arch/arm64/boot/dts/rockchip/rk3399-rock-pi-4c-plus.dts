@@ -11,6 +11,7 @@
 #include "rk3399-opp.dtsi"
 #include <dt-bindings/display/media-bus-format.h>
 #include <dt-bindings/gpio/gpio.h>
+#include "rock-pi-4c-plus-radxa-10p1inch-display.dtsi"
 
 / {
 	model = "Radxa ROCK Pi 4C+";
@@ -500,8 +501,8 @@
 			vcc_mipi: LDO_REG5 {
 				regulator-always-on;
 				regulator-boot-on;
-				regulator-min-microvolt = <1500000>;
-				regulator-max-microvolt = <1500000>;
+				regulator-min-microvolt = <3000000>;
+				regulator-max-microvolt = <3000000>;
 
 				regulator-name = "vcc_mipi";
 				regulator-state-mem {
@@ -837,16 +838,53 @@
 };
 
 &hdmi_in_vopl {
-	status = "okay";
+	status = "disabled";
 };
 
 &hdmi_in_vopb {
-	status = "disabled";
+	status = "okay";
 };
 
 &route_hdmi {
 	status = "okay";
-	connect = <&vopl_out_hdmi>;
+	connect = <&vopb_out_hdmi>;
+};
+
+&backlight {
+	status = "disabled";
+};
+
+&pwm2 {
+	status = "disabled";
+};
+
+&dsi{
+	status = "disabled";
+};
+
+&dsi_panel {
+	status = "disabled";
+};
+
+&vopb_out_dsi {
+	status = "disabled";
+};
+
+&vopl_out_dsi {
+	status = "disabled";
+};
+
+&dsi_in_vopb {
+	status = "disabled";
+};
+
+&dsi_in_vopl {
+	status = "disabled";
+};
+
+&route_dsi {
+	status = "disabled";
+	connect = <&vopl_out_dsi>;
 };
 
 &cdn_dp {
@@ -862,11 +900,11 @@
 };
 
 &dp_in_vopb {
-	status = "okay";
+	status = "disabled";
 };
 
 &dp_in_vopl {
-	status = "disabled";
+	status = "okay";
 };
 
 &tcphy0_dp {
@@ -875,6 +913,19 @@
 
 &tcphy0_usb3 {
 	status = "okay";
+};
+
+//HDMI is bound to vopb:
+&vopb {
+	status = "okay";
+	assigned-clocks = <&cru DCLK_VOP0_DIV>;
+	assigned-clock-parents = <&cru PLL_VPLL>;
+};
+
+&vopl {
+	status = "okay";
+	assigned-clocks = <&cru DCLK_VOP1_DIV>;
+	assigned-clock-parents = <&cru PLL_CPLL>;
 };
 
 &pcie_phy {
