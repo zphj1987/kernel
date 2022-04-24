@@ -74,7 +74,7 @@ static unsigned long get_voltage(struct kbase_device *kbdev, unsigned long freq)
 
 	opp = dev_pm_opp_find_freq_exact(kbdev->dev, freq, true);
 
-	if (IS_ERR_OR_NULL(opp))
+	if (IS_ERR(opp))
 		dev_err(kbdev->dev, "Failed to get opp (%ld)\n", PTR_ERR(opp));
 	else {
 		voltage = dev_pm_opp_get_voltage(opp);
@@ -127,20 +127,6 @@ void kbase_devfreq_opp_translate(struct kbase_device *kbdev, unsigned long freq,
 	}
 }
 
-static int kbase_devfreq_set_read_margin(struct device *dev,
-					 struct rockchip_opp_info *opp_info,
-					 unsigned long volt,
-					 bool is_set_rm)
-{
-	if (opp_info->data && opp_info->data->set_read_margin) {
-		if (is_set_rm)
-			opp_info->data->set_read_margin(dev, opp_info, volt);
-		opp_info->volt_rm = volt;
-	}
-
-	return 0;
-}
-
 int kbase_devfreq_opp_helper(struct dev_pm_set_opp_data *data)
 {
 	struct device *dev = data->dev;
@@ -157,11 +143,12 @@ int kbase_devfreq_opp_helper(struct dev_pm_set_opp_data *data)
 	unsigned long new_freq = data->new_opp.rate;
 	bool is_set_rm = true;
 	bool is_set_clk = true;
+	u32 target_rm = UINT_MAX;
 	int ret = 0;
 
 	if (!pm_runtime_active(dev)) {
 		is_set_rm = false;
-		if (kbdev->scmi_clk)
+		if (opp_info->scmi_clk)
 			is_set_clk = false;
 	}
 
@@ -170,9 +157,15 @@ int kbase_devfreq_opp_helper(struct dev_pm_set_opp_data *data)
 		dev_err(dev, "failed to enable opp clks\n");
 		return ret;
 	}
+	rockchip_get_read_margin(dev, opp_info, new_supply_vdd->u_volt,
+				 &target_rm);
 
+	/* Change frequency */
+	dev_dbg(dev, "switching OPP: %lu Hz --> %lu Hz\n", old_freq, new_freq);
 	/* Scaling up? Scale voltage before frequency */
 	if (new_freq >= old_freq) {
+		rockchip_set_intermediate_rate(dev, opp_info, clk, old_freq,
+					       new_freq, true, is_set_clk);
 		ret = regulator_set_voltage(mem_reg, new_supply_mem->u_volt,
 					    INT_MAX);
 		if (ret) {
@@ -187,23 +180,20 @@ int kbase_devfreq_opp_helper(struct dev_pm_set_opp_data *data)
 				new_supply_vdd->u_volt);
 			goto restore_voltage;
 		}
-		kbase_devfreq_set_read_margin(dev, opp_info,
-					      new_supply_vdd->u_volt,
-					      is_set_rm);
-	}
-
-	/* Change frequency */
-	dev_dbg(dev, "switching OPP: %lu Hz --> %lu Hz\n", old_freq, new_freq);
-	if (is_set_clk && clk_set_rate(clk, new_freq)) {
-		dev_err(dev, "failed to set clk rate: %d\n", ret);
-		goto restore_rm;
-	}
-
+		rockchip_set_read_margin(dev, opp_info, target_rm, is_set_rm);
+		if (is_set_clk && clk_set_rate(clk, new_freq)) {
+			dev_err(dev, "failed to set clk rate: %d\n", ret);
+			goto restore_rm;
+		}
 	/* Scaling down? Scale voltage after frequency */
-	if (new_freq < old_freq) {
-		kbase_devfreq_set_read_margin(dev, opp_info,
-					      new_supply_vdd->u_volt,
-					      is_set_rm);
+	} else {
+		rockchip_set_intermediate_rate(dev, opp_info, clk, old_freq,
+					       new_freq, false, is_set_clk);
+		rockchip_set_read_margin(dev, opp_info, target_rm, is_set_rm);
+		if (is_set_clk && clk_set_rate(clk, new_freq)) {
+			dev_err(dev, "failed to set clk rate: %d\n", ret);
+			goto restore_rm;
+		}
 		ret = regulator_set_voltage(vdd_reg, new_supply_vdd->u_volt,
 					    INT_MAX);
 		if (ret) {
@@ -228,8 +218,9 @@ restore_freq:
 	if (is_set_clk && clk_set_rate(clk, old_freq))
 		dev_err(dev, "failed to restore old-freq %lu Hz\n", old_freq);
 restore_rm:
-	kbase_devfreq_set_read_margin(dev, opp_info, old_supply_vdd->u_volt,
-				      is_set_rm);
+	rockchip_get_read_margin(dev, opp_info, old_supply_vdd->u_volt,
+				 &target_rm);
+	rockchip_set_read_margin(dev, opp_info, opp_info->target_rm, is_set_rm);
 restore_voltage:
 	regulator_set_voltage(mem_reg, old_supply_mem->u_volt, INT_MAX);
 	regulator_set_voltage(vdd_reg, old_supply_vdd->u_volt, INT_MAX);
@@ -253,6 +244,8 @@ kbase_devfreq_target(struct device *dev, unsigned long *freq, u32 flags)
 		return PTR_ERR(opp);
 	dev_pm_opp_put(opp);
 
+	if (*freq == kbdev->current_nominal_freq)
+		return 0;
 	rockchip_monitor_volt_adjust_lock(kbdev->mdev_info);
 	ret = dev_pm_opp_set_rate(dev, *freq);
 	if (!ret) {
@@ -693,7 +686,7 @@ int kbase_devfreq_init(struct kbase_device *kbdev)
 			kbdev->current_freqs[i] = 0;
 	}
 	if (strstr(__clk_get_name(kbdev->clocks[0]), "scmi"))
-		kbdev->scmi_clk = kbdev->clocks[0];
+		kbdev->opp_info.scmi_clk = kbdev->clocks[0];
 	kbdev->current_nominal_freq = kbdev->current_freqs[0];
 
 	opp = devfreq_recommended_opp(kbdev->dev, &kbdev->current_nominal_freq, 0);

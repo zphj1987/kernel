@@ -517,7 +517,7 @@ static void rkcif_scale_vb2_buf_queue(struct vb2_buffer *vb)
 	for (i = 0; i < fmt->mplanes; i++) {
 		void *addr = vb2_plane_vaddr(vb, i);
 
-		if (hw_dev->iommu_en) {
+		if (hw_dev->is_dma_sg_ops) {
 			struct sg_table *sgt = vb2_dma_sg_plane_desc(vb, i);
 
 			cifbuf->buff_addr[i] = sg_dma_address(sgt->sgl);
@@ -914,10 +914,7 @@ static int rkcif_scale_init_vb2_queue(struct vb2_queue *q,
 	q->io_modes = VB2_MMAP | VB2_DMABUF;
 	q->drv_priv = scale_vdev;
 	q->ops = &rkcif_scale_vb2_ops;
-	if (hw_dev->iommu_en)
-		q->mem_ops = &vb2_dma_sg_memops;
-	else
-		q->mem_ops = &vb2_dma_contig_memops;
+	q->mem_ops = hw_dev->mem_ops;
 	q->buf_struct_size = sizeof(struct rkcif_buffer);
 	q->min_buffers_needed = CIF_SCALE_REQ_BUFS_MIN;
 	q->timestamp_flags = V4L2_BUF_FLAG_TIMESTAMP_MONOTONIC;
@@ -926,6 +923,8 @@ static int rkcif_scale_init_vb2_queue(struct vb2_queue *q,
 	q->allow_cache_hints = 1;
 	q->bidirectional = 1;
 	q->gfp_flags = GFP_DMA32;
+	if (hw_dev->is_dma_contig)
+		q->dma_attrs = DMA_ATTR_FORCE_CONTIGUOUS;
 	return vb2_queue_init(q);
 }
 

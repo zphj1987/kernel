@@ -285,6 +285,8 @@ struct dw_dp {
 	struct drm_property *color_format_property;
 	struct drm_property *color_depth_capacity;
 	struct drm_property *color_format_capacity;
+
+	struct rockchip_drm_sub_dev sub_dev;
 };
 
 struct dw_dp_state {
@@ -1408,13 +1410,15 @@ static int dw_dp_send_vsc_sdp(struct dw_dp *dp)
 		break;
 	}
 
-	if (video->color_format == DRM_COLOR_FORMAT_RGB444)
+	if (video->color_format == DRM_COLOR_FORMAT_RGB444) {
 		vsc.colorimetry = DP_COLORIMETRY_DEFAULT;
-	else
+		vsc.dynamic_range = DP_DYNAMIC_RANGE_VESA;
+	} else {
 		vsc.colorimetry = DP_COLORIMETRY_BT709_YCC;
+		vsc.dynamic_range = DP_DYNAMIC_RANGE_CTA;
+	}
 
 	vsc.bpc = video->bpc;
-	vsc.dynamic_range = DP_DYNAMIC_RANGE_CTA;
 	vsc.content_type = DP_CONTENT_TYPE_NOT_DEFINED;
 
 	dw_dp_vsc_sdp_pack(&vsc, &sdp);
@@ -1718,12 +1722,6 @@ static void dw_dp_hpd_init(struct dw_dp *dp)
 
 static void dw_dp_aux_init(struct dw_dp *dp)
 {
-	regmap_update_bits(dp->regmap, DPTX_SOFT_RESET_CTRL, AUX_RESET,
-			   FIELD_PREP(AUX_RESET, 1));
-	usleep_range(10, 20);
-	regmap_update_bits(dp->regmap, DPTX_SOFT_RESET_CTRL, AUX_RESET,
-			   FIELD_PREP(AUX_RESET, 0));
-
 	regmap_update_bits(dp->regmap, DPTX_GENERAL_INTERRUPT_ENABLE,
 			   AUX_REPLY_EVENT_EN,
 			   FIELD_PREP(AUX_REPLY_EVENT_EN, 1));
@@ -1731,18 +1729,6 @@ static void dw_dp_aux_init(struct dw_dp *dp)
 
 static void dw_dp_init(struct dw_dp *dp)
 {
-	regmap_update_bits(dp->regmap, DPTX_SOFT_RESET_CTRL, CONTROLLER_RESET,
-			   FIELD_PREP(CONTROLLER_RESET, 1));
-	usleep_range(10, 20);
-	regmap_update_bits(dp->regmap, DPTX_SOFT_RESET_CTRL, CONTROLLER_RESET,
-			   FIELD_PREP(CONTROLLER_RESET, 0));
-
-	regmap_update_bits(dp->regmap, DPTX_SOFT_RESET_CTRL, PHY_SOFT_RESET,
-			   FIELD_PREP(PHY_SOFT_RESET, 1));
-	usleep_range(10, 20);
-	regmap_update_bits(dp->regmap, DPTX_SOFT_RESET_CTRL, PHY_SOFT_RESET,
-			   FIELD_PREP(PHY_SOFT_RESET, 0));
-
 	regmap_update_bits(dp->regmap, DPTX_CCTL, DEFAULT_FAST_LINK_TRAIN_EN,
 			   FIELD_PREP(DEFAULT_FAST_LINK_TRAIN_EN, 0));
 
@@ -1943,6 +1929,57 @@ static int dw_dp_bridge_mode_valid(struct drm_bridge *bridge,
 	return MODE_OK;
 }
 
+static void dw_dp_loader_protect(struct drm_encoder *encoder, bool on)
+{
+	struct dw_dp *dp = encoder_to_dp(encoder);
+	struct dw_dp_link *link = &dp->link;
+	struct drm_connector *conn = &dp->connector;
+	struct drm_display_info *di = &conn->display_info;
+
+	u32 value;
+
+	if (on) {
+		di->color_formats = DRM_COLOR_FORMAT_RGB444;
+		di->bpc = 8;
+
+		regmap_read(dp->regmap, DPTX_PHYIF_CTRL, &value);
+		switch (FIELD_GET(PHY_LANES, value)) {
+		case 2:
+			link->lanes = 4;
+			break;
+		case 1:
+			link->lanes = 2;
+			break;
+		case 0:
+			fallthrough;
+		default:
+			link->lanes = 1;
+			break;
+		}
+
+		switch (FIELD_GET(PHY_RATE, value)) {
+		case 3:
+			link->rate = 810000;
+			break;
+		case 2:
+			link->rate = 540000;
+			break;
+		case 1:
+			link->rate = 270000;
+			break;
+		case 0:
+			fallthrough;
+		default:
+			link->rate = 162000;
+			break;
+		}
+
+		phy_power_on(dp->phy);
+	} else {
+		phy_power_off(dp->phy);
+	}
+}
+
 static int dw_dp_bridge_attach(struct drm_bridge *bridge,
 			       enum drm_bridge_attach_flags flags)
 {
@@ -1973,6 +2010,11 @@ static int dw_dp_bridge_attach(struct drm_bridge *bridge,
 				 &dw_dp_connector_helper_funcs);
 
 	drm_connector_attach_encoder(connector, bridge->encoder);
+
+	dp->sub_dev.connector = connector;
+	dp->sub_dev.of_node = dp->dev->of_node;
+	dp->sub_dev.loader_protect = dw_dp_loader_protect;
+	rockchip_drm_register_sub_dev(&dp->sub_dev);
 
 	return 0;
 }
@@ -2070,6 +2112,26 @@ static void dw_dp_bridge_atomic_enable(struct drm_bridge *bridge,
 	}
 }
 
+static void dw_dp_reset(struct dw_dp *dp)
+{
+	int val;
+
+	disable_irq(dp->irq);
+	regmap_update_bits(dp->regmap, DPTX_SOFT_RESET_CTRL, CONTROLLER_RESET,
+			   FIELD_PREP(CONTROLLER_RESET, 1));
+	udelay(10);
+	regmap_update_bits(dp->regmap, DPTX_SOFT_RESET_CTRL, CONTROLLER_RESET,
+			   FIELD_PREP(CONTROLLER_RESET, 0));
+
+	dw_dp_init(dp);
+	if (!dp->hpd_gpio) {
+		regmap_read_poll_timeout(dp->regmap, DPTX_HPD_STATUS, val,
+					 FIELD_GET(HPD_HOT_PLUG, val), 200, 200000);
+		regmap_write(dp->regmap, DPTX_HPD_STATUS, HPD_HOT_PLUG);
+	}
+	enable_irq(dp->irq);
+}
+
 static void dw_dp_bridge_atomic_disable(struct drm_bridge *bridge,
 					struct drm_bridge_state *old_bridge_state)
 {
@@ -2078,6 +2140,7 @@ static void dw_dp_bridge_atomic_disable(struct drm_bridge *bridge,
 	dw_dp_video_disable(dp);
 	dw_dp_link_disable(dp);
 	bitmap_zero(dp->sdp_reg_bank, SDP_REG_BANK_SIZE);
+	dw_dp_reset(dp);
 }
 
 static enum drm_connector_status dw_dp_detect_dpcd(struct dw_dp *dp)
@@ -2629,12 +2692,16 @@ static int dw_dp_bind(struct device *dev, struct device *master, void *data)
 	pm_runtime_enable(dp->dev);
 	pm_runtime_get_sync(dp->dev);
 
+	enable_irq(dp->irq);
+
 	return 0;
 }
 
 static void dw_dp_unbind(struct device *dev, struct device *master, void *data)
 {
 	struct dw_dp *dp = dev_get_drvdata(dev);
+
+	disable_irq(dp->irq);
 
 	pm_runtime_put(dp->dev);
 	pm_runtime_disable(dp->dev);
@@ -2836,8 +2903,6 @@ static int __maybe_unused dw_dp_runtime_suspend(struct device *dev)
 {
 	struct dw_dp *dp = dev_get_drvdata(dev);
 
-	disable_irq(dp->irq);
-
 	clk_disable_unprepare(dp->aux_clk);
 	clk_disable_unprepare(dp->apb_clk);
 	clk_disable_unprepare(dp->hclk);
@@ -2853,20 +2918,15 @@ static int __maybe_unused dw_dp_runtime_resume(struct device *dev)
 	clk_prepare_enable(dp->apb_clk);
 	clk_prepare_enable(dp->aux_clk);
 
-	reset_control_assert(dp->rstc);
-	udelay(10);
-	reset_control_deassert(dp->rstc);
-
 	dw_dp_init(dp);
-	enable_irq(dp->irq);
 
 	return 0;
 }
 
 static const struct dev_pm_ops dw_dp_pm_ops = {
 	SET_RUNTIME_PM_OPS(dw_dp_runtime_suspend, dw_dp_runtime_resume, NULL)
-	SET_SYSTEM_SLEEP_PM_OPS(pm_runtime_force_suspend,
-				pm_runtime_force_resume)
+	SET_NOIRQ_SYSTEM_SLEEP_PM_OPS(pm_runtime_force_suspend,
+				      pm_runtime_force_resume)
 };
 
 static const struct of_device_id dw_dp_of_match[] = {

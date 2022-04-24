@@ -414,6 +414,8 @@ config VIDEO_OTP_EEPROM
 	help
 	  This driver supports OTP load from eeprom.
 
+source "drivers/media/i2c/rk628/Kconfig"
+
 config VIDEO_SAA7110
 	tristate "Philips SAA7110 video decoder"
 	depends on VIDEO_V4L2 && I2C
@@ -558,6 +560,17 @@ config VIDEO_MAX9286
 
 	  To compile this driver as a module, choose M here: the
 	  module will be called max9286.
+
+config VIDEO_MAX96714
+	tristate "Maxim MAX96714 GMSL deserializer support"
+	depends on I2C && VIDEO_V4L2 && VIDEO_V4L2_SUBDEV_API
+	depends on MEDIA_CAMERA_SUPPORT
+	select V4L2_FWNODE
+	help
+	  This driver supports the Maxim MAX96714 GMSL deserializer.
+
+	  To compile this driver as a module, choose M here: the
+	  module will be called max96714.
 
 comment "Video and audio decoders"
 
@@ -965,6 +978,14 @@ config VIDEO_IMX214
 	  To compile this driver as a module, choose M here: the
 	  module will be called imx214.
 
+config VIDEO_IMX214_EEPROM
+	tristate "Sony imx214 sensor otp from eeprom support"
+	depends on VIDEO_V4L2 && I2C
+	depends on VIDEO_IMX214
+	select V4L2_FWNODE
+	help
+	  This driver supports IMX214 OTP load from eeprom.
+
 config VIDEO_IMX219
 	tristate "Sony IMX219 sensor support"
 	depends on I2C && VIDEO_V4L2
@@ -1156,6 +1177,18 @@ config VIDEO_IMX355
 
 	  To compile this driver as a module, choose M here: the
 	  module will be called imx355.
+
+config VIDEO_JX_K17
+	tristate "Soi JX_K17 sensor support"
+	depends on I2C && VIDEO_V4L2
+	select MEDIA_CONTROLLER
+	select VIDEO_V4L2_SUBDEV_API
+	help
+	  This is a Video4Linux2 sensor driver for the Soi
+	  JX_K17 camera.
+
+	  To compile this driver as a module, choose M here: the
+	  module will be called jx_k17.
 
 config VIDEO_OS02G10
 	tristate "OmniVision OS02G10 sensor support"
@@ -1640,6 +1673,46 @@ config VIDEO_MT9V111
 	  To compile this driver as a module, choose M here: the
 	  module will be called mt9v111.
 
+config VIDEO_SC3336
+	tristate "SmartSens SC3336 sensor support"
+	depends on I2C && VIDEO_V4L2
+	select MEDIA_CONTROLLER
+	select VIDEO_V4L2_SUBDEV_API
+	select V4L2_FWNODE
+	help
+	  This is a Video4Linux2 sensor driver for the SmartSens
+	  SC3336 camera.
+
+config VIDEO_SC4336
+	tristate "SmartSens SC4336 sensor support"
+	depends on I2C && VIDEO_V4L2
+	select MEDIA_CONTROLLER
+	select VIDEO_V4L2_SUBDEV_API
+	select V4L2_FWNODE
+	help
+	  This is a Video4Linux2 sensor driver for the SmartSens
+	  SC4336 camera.
+
+config VIDEO_SC500AI
+	tristate "SmartSens SC500AI sensor support"
+	depends on I2C && VIDEO_V4L2
+	select MEDIA_CONTROLLER
+	select VIDEO_V4L2_SUBDEV_API
+	select V4L2_FWNODE
+	help
+	  This is a Video4Linux2 sensor driver for the SmartSens
+	  SC500AI camera.
+
+config VIDEO_SC530AI
+	tristate "SmartSens SC530AI sensor support"
+	depends on I2C && VIDEO_V4L2
+	select MEDIA_CONTROLLER
+	select VIDEO_V4L2_SUBDEV_API
+	select V4L2_FWNODE
+	help
+	  This is a Video4Linux2 sensor driver for the SmartSens
+	  SC530AI camera.
+
 config VIDEO_SENSOR_ADAPTER
 	tristate "Rockchip sensor driver adapter"
 	depends on I2C && VIDEO_V4L2
@@ -1814,6 +1887,17 @@ config VIDEO_DW9807_VCM
 	help
 	  This is a driver for the DW9807 camera lens voice coil.
 	  DW9807 is a 10 bit DAC with 100mA output current sink
+	  capability. This is designed for linear control of
+	  voice coil motors, controlled via I2C serial interface.
+
+config VIDEO_FP5510
+	tristate "FP5510 lens voice coil support"
+	depends on I2C && VIDEO_V4L2
+	select MEDIA_CONTROLLER
+	select VIDEO_V4L2_SUBDEV_API
+	help
+	  This is a driver for the FP5510 camera lens voice coil.
+	  FP5510 is a 10 bit DAC with 100mA output current sink
 	  capability. This is designed for linear control of
 	  voice coil motors, controlled via I2C serial interface.
 

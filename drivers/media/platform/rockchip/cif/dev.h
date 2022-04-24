@@ -75,6 +75,7 @@
 
 #define RKCIF_RX_BUF_MAX	8
 
+#define RKCIF_MAX_INTERVAL_NS	5000000
 /*
  * for HDR mode sync buf
  */
@@ -121,7 +122,11 @@ enum rkcif_lvds_pad {
 	RKCIF_LVDS_PAD_SRC_ID1,
 	RKCIF_LVDS_PAD_SRC_ID2,
 	RKCIF_LVDS_PAD_SRC_ID3,
-	RKCIF_LVDS_PAD_MAX
+	RKCIF_LVDS_PAD_SCL_ID0,
+	RKCIF_LVDS_PAD_SCL_ID1,
+	RKCIF_LVDS_PAD_SCL_ID2,
+	RKCIF_LVDS_PAD_SCL_ID3,
+	RKCIF_LVDS_PAD_MAX,
 };
 
 enum rkcif_lvds_state {
@@ -432,6 +437,14 @@ enum rkcif_dma_en_mode {
 	RKCIF_DMAEN_BY_ISP = 0x2,
 };
 
+struct rkcif_skip_info {
+	u8 cap_m;
+	u8 skip_n;
+	bool skip_en;
+	bool skip_to_en;
+	bool skip_to_dis;
+};
+
 /*
  * struct rkcif_stream - Stream states TODO
  *
@@ -485,6 +498,9 @@ struct rkcif_stream {
 	struct list_head		rx_buf_head;
 	int				buf_num_toisp;
 	u64				line_int_cnt;
+	int				lack_buf_cnt;
+	struct rkcif_skip_info		skip_info;
+	bool				is_stop_dma;
 	bool				stopping;
 	bool				crop_enable;
 	bool				crop_dyn_en;
@@ -562,6 +578,7 @@ static inline struct vb2_queue *to_vb2_queue(struct file *file)
 #define CIF_SCALE_CH3_VDEV_NAME CIF_DRIVER_NAME	"_scale_ch3"
 
 #define RKCIF_SCALE_ENUM_SIZE_MAX	3
+#define RKCIF_MAX_SDITF			4
 
 enum scale_ch_sw {
 	SCALE_MIPI0_ID0,
@@ -692,7 +709,7 @@ struct rkcif_device {
 	irqreturn_t (*isr_hdl)(int irq, struct rkcif_device *cif_dev);
 	int inf_id;
 
-	struct sditf_priv		*sditf;
+	struct sditf_priv		*sditf[RKCIF_MAX_SDITF];
 	struct proc_dir_entry		*proc_dir;
 	struct rkcif_irq_stats		irq_stats;
 	spinlock_t			hdr_lock; /* lock for hdr buf sync */
@@ -712,9 +729,11 @@ struct rkcif_device {
 	bool				iommu_en;
 	bool				is_use_dummybuf;
 	int				sync_type;
+	int				sditf_cnt;
 };
 
 extern struct platform_driver rkcif_plat_drv;
+void rkcif_set_fps(struct rkcif_stream *stream, struct rkcif_fps *fps);
 int rkcif_do_start_stream(struct rkcif_stream *stream,
 				enum rkcif_stream_mode mode);
 void rkcif_do_stop_stream(struct rkcif_stream *stream,
@@ -780,7 +799,5 @@ int rkcif_set_fmt(struct rkcif_stream *stream,
 void rkcif_enable_dma_capture(struct rkcif_stream *stream);
 
 u32 rkcif_mbus_pixelcode_to_v4l2(u32 pixelcode);
-
-extern const struct vb2_mem_ops vb2_rdma_sg_memops;
 
 #endif

@@ -996,7 +996,6 @@ static int bq25890_pd_notifier_call(struct notifier_block *nb,
 	if (prop.intval == 0) {
 		bq->pd_cur = 450000;
 		bq->pd_vol = 5000000;
-		bq25890_field_write(bq, F_AUTO_DPDM_EN, 1);
 		queue_delayed_work(bq->charger_wq, &bq->pd_work,
 				   msecs_to_jiffies(10));
 		return NOTIFY_OK;
@@ -1013,7 +1012,6 @@ static int bq25890_pd_notifier_call(struct notifier_block *nb,
 			return NOTIFY_OK;
 		bq->pd_vol = prop.intval;
 
-		bq25890_field_write(bq, F_AUTO_DPDM_EN, 0);
 		queue_delayed_work(bq->charger_wq, &bq->pd_work,
 				   msecs_to_jiffies(100));
 	}
@@ -1053,6 +1051,7 @@ static int bq25890_register_pd_psy(struct bq25890_device *bq)
 		return ret;
 	}
 
+	bq25890_field_write(bq, F_AUTO_DPDM_EN, 0);
 	if (bq->nb.notifier_call) {
 		notify_psy = power_supply_get_by_phandle(bq->dev->of_node,
 						"ti,usb-charger-detection");

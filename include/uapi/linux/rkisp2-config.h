@@ -10,12 +10,15 @@
 #include <linux/types.h>
 #include <linux/v4l2-controls.h>
 
-#define RKISP_API_VERSION		KERNEL_VERSION(1, 8, 0)
+#define RKISP_API_VERSION		KERNEL_VERSION(1, 9, 0)
 
 /****************ISP SUBDEV IOCTL*****************************/
 
 #define RKISP_CMD_TRIGGER_READ_BACK \
 	_IOW('V', BASE_VIDIOC_PRIVATE + 0, struct isp2x_csi_trigger)
+
+#define RKISP_CMD_GET_ISP_INFO \
+	_IOR('V', BASE_VIDIOC_PRIVATE + 1, struct rkisp_isp_info)
 
 #define RKISP_CMD_GET_SHARED_BUF \
 	_IOR('V', BASE_VIDIOC_PRIVATE + 2, struct rkisp_thunderboot_resmem)
@@ -41,6 +44,9 @@
 #define RKISP_CMD_SET_MESHBUF_SIZE \
 	_IOW('V', BASE_VIDIOC_PRIVATE + 9, struct rkisp_meshbuf_size)
 
+#define RKISP_CMD_INFO2DDR \
+	_IOWR('V', BASE_VIDIOC_PRIVATE + 10, struct rkisp_info2ddr)
+
 /****************ISP VIDEO IOCTL******************************/
 
 #define RKISP_CMD_GET_CSI_MEMORY_MODE \
@@ -54,6 +60,21 @@
 
 #define RKISP_CMD_SET_CMSK \
 	_IOW('V', BASE_VIDIOC_PRIVATE + 103, struct rkisp_cmsk_cfg)
+
+#define RKISP_CMD_GET_STREAM_INFO \
+	_IOR('V', BASE_VIDIOC_PRIVATE + 104, struct rkisp_stream_info)
+
+#define RKISP_CMD_GET_MIRROR_FLIP \
+	_IOR('V', BASE_VIDIOC_PRIVATE + 105, struct rkisp_mirror_flip)
+
+#define RKISP_CMD_SET_MIRROR_FLIP \
+	_IOW('V', BASE_VIDIOC_PRIVATE + 106, struct rkisp_mirror_flip)
+
+#define RKISP_CMD_GET_WRAP_LINE \
+	_IOR('V', BASE_VIDIOC_PRIVATE + 107, int)
+/* set wrap line before VIDIOC_S_FMT */
+#define RKISP_CMD_SET_WRAP_LINE \
+	_IOW('V', BASE_VIDIOC_PRIVATE + 108, int)
 
 /*************************************************************/
 
@@ -226,6 +247,24 @@
 
 #define ISP2X_MESH_BUF_NUM		2
 
+enum rkisp_isp_mode {
+	/* frame input related */
+	RKISP_ISP_NORMAL = BIT(0),
+	RKISP_ISP_HDR2 = BIT(1),
+	RKISP_ISP_HDR3 = BIT(2),
+	RKISP_ISP_COMPR = BIT(3),
+
+	/* isp function related */
+	RKISP_ISP_BIGMODE = BIT(28),
+};
+
+struct rkisp_isp_info {
+	enum rkisp_isp_mode mode;
+	u32 act_width;
+	u32 act_height;
+	u8 compr_bit;
+} __attribute__ ((packed));
+
 enum isp2x_mesh_buf_stat {
 	MESH_BUF_INIT = 0,
 	MESH_BUF_WAIT2CHIP,
@@ -295,6 +334,28 @@ struct rkisp_cmsk_cfg {
 	unsigned int height_ro;
 } __attribute__ ((packed));
 
+/* struct rkisp_stream_info
+ * cur_frame_id: stream current frame id
+ * input_frame_loss: isp input frame loss num
+ * output_frame_loss: stream output frame loss num
+ * stream_on: stream on/off
+ */
+struct rkisp_stream_info {
+	unsigned int cur_frame_id;
+	unsigned int input_frame_loss;
+	unsigned int output_frame_loss;
+	unsigned char stream_on;
+} __attribute__ ((packed));
+
+/* struct rkisp_mirror_flip
+ * mirror: global for all output stream
+ * flip: independent for all output stream
+ */
+struct rkisp_mirror_flip {
+	unsigned char mirror;
+	unsigned char flip;
+} __attribute__ ((packed));
+
 /* trigger event mode
  * T_TRY: trigger maybe with retry
  * T_TRY_YES: trigger to retry
@@ -303,6 +364,7 @@ struct rkisp_cmsk_cfg {
  * T_START_X1: isp read one frame
  * T_START_X2: isp read hdr two frame
  * T_START_X3: isp read hdr three frame
+ * T_START_C: isp read hdr linearised and compressed data
  */
 enum isp2x_trigger_mode {
 	T_TRY = BIT(0),
@@ -312,6 +374,7 @@ enum isp2x_trigger_mode {
 	T_START_X1 = BIT(4),
 	T_START_X2 = BIT(5),
 	T_START_X3 = BIT(6),
+	T_START_C = BIT(7),
 };
 
 struct isp2x_csi_trigger {
@@ -343,6 +406,46 @@ enum isp_csi_memory {
 	CSI_MEM_WORD_LITTLE_ALIGN = 1,
 	CSI_MEM_WORD_BIG_ALIGN = 2,
 };
+
+#define RKISP_INFO2DDR_BUF_MAX	4
+/* 32bit flag for user set to memory after buf used */
+#define RKISP_INFO2DDR_BUF_INIT 0x5AA5
+
+enum rkisp_info2ddr_owner {
+	RKISP_INFO2DRR_OWNER_NULL,
+	RKISP_INFO2DRR_OWNER_GAIN,
+	RKISP_INFO2DRR_OWNER_AWB,
+};
+
+/* struct rkisp_info2ddr
+ * awb and gain debug info write to ddr
+ *
+ * owner: 0: off, 1: gain, 2: awb.
+ * u: gain or awb mode parameters.
+ * buf_cnt: buf num to request. return actual result.
+ * buf_fd: fd of memory alloc result.
+ * wsize: data width to request. if useless to 0. return actual result.
+ * vsize: data height to request. if useless to 0. return actual result.
+ */
+struct rkisp_info2ddr {
+	enum rkisp_info2ddr_owner owner;
+
+	union {
+		struct {
+			u8 gain2ddr_mode;
+		} gain;
+
+		struct {
+			u8 awb2ddr_sel;
+		} awb;
+	} u;
+
+	u8 buf_cnt;
+	s32 buf_fd[RKISP_INFO2DDR_BUF_MAX];
+
+	u32 wsize;
+	u32 vsize;
+} __attribute__ ((packed));
 
 struct isp2x_ispgain_buf {
 	u32 gain_dmaidx;

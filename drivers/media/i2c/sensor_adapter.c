@@ -5,7 +5,7 @@
  * Copyright (C) 2022 Rockchip Electronics Co., Ltd.
  *
  */
-
+//#define DEBUG
 #include <linux/clk.h>
 #include <linux/device.h>
 #include <linux/delay.h>
@@ -45,12 +45,6 @@
 #define SENSOR_NAME			"sensor"
 #define MAX_SENSOR_NUM			8
 #define MAX_MIPICLK_NUM			5
-
-struct mclk_data {
-	u32 mclk_index;
-	u32 mclk_rate;
-	u32 reserved[8];
-};
 
 struct sensor_crop {
 	bool is_enable;
@@ -116,6 +110,17 @@ static const char * const mipi_clks[] = {
 	"clk_mipi4",
 };
 
+static struct rkmodule_csi_dphy_param rk3588_dcphy_param = {
+	.vendor = PHY_VENDOR_SAMSUNG,
+	.lp_vol_ref = 3,
+	.lp_hys_sw = {3, 0, 0, 0},
+	.lp_escclk_pol_sel = {1, 0, 0, 0},
+	.skew_data_cal_clk = {0, 3, 3, 3},
+	.clk_hs_term_sel = 2,
+	.data_hs_term_sel = {2, 2, 2, 2},
+	.reserved = {0},
+};
+
 #define to_sensor(sd) container_of(sd, struct sensor, subdev)
 
 /*
@@ -150,6 +155,38 @@ static struct sensor_mode supported_modes[] = {
 		},
 	},
 };
+
+static int sensor_write_reg(struct i2c_client *client, u16 reg,
+			    u32 reg_len, u32 val, u32 val_len)
+{
+	u32 buf_i, val_i;
+	u8 buf[8];
+	u8 *val_p;
+	u8 *reg_p;
+	__be32 val_be;
+	__be32 reg_be;
+
+	if (reg_len > 4 || val_len > 4)
+		return -EINVAL;
+
+	reg_be = cpu_to_be32(reg);
+	reg_p = (u8 *)&reg_be;
+	for (buf_i = 0; buf_i < reg_len; buf_i++)
+		buf[buf_i] = reg_p[4 - reg_len + buf_i];
+
+	val_be = cpu_to_be32(val);
+	val_p = (u8 *)&val_be;
+	buf_i = reg_len;
+	val_i = 4 - val_len;
+
+	while (val_i < 4)
+		buf[buf_i++] = val_p[val_i++];
+
+	if (i2c_master_send(client, buf, reg_len + val_len) != reg_len + val_len)
+		return -EIO;
+
+	return 0;
+}
 
 static int sensor_set_fmt(struct v4l2_subdev *sd,
 			  struct v4l2_subdev_pad_config *cfg,
@@ -439,14 +476,17 @@ static long sensor_ioctl(struct v4l2_subdev *sd, unsigned int cmd, void *arg)
 	long ret = 0;
 	s64 link_freq = 0;
 	int i = 0;
-	u64 *preg_addr = NULL;
-	u64 *preg_value = NULL;
-	u64 *preg_addr_bytes = NULL;
-	u64 *preg_value_bytes = NULL;
+	u32 *preg_addr = NULL;
+	u32 *preg_value = NULL;
+	u32 *preg_addr_bytes = NULL;
+	u32 *preg_value_bytes = NULL;
 	u32 lens = 0;
 	u8 dev_num = 0;
 	u32 stream = 0;
 	u32 *sync_mode = NULL;
+	struct rkmodule_mclk_data *mclk;
+	struct rkmodule_dev_info *dev_info;
+	struct rkmodule_csi_dphy_param *dphy_param;
 
 	switch (cmd) {
 	case RKMODULE_GET_MODULE_INFO:
@@ -498,7 +538,7 @@ static long sensor_ioctl(struct v4l2_subdev *sd, unsigned int cmd, void *arg)
 			return -EINVAL;
 		}
 
-		dev_info(&sensor->client->dev, "sensor reg array num %d\n",
+		dev_dbg(&sensor->client->dev, "sensor reg array num %d\n",
 			 reg_s->num_regs);
 		lens = sizeof(u32) * reg_s->num_regs;
 		preg_addr = kzalloc(lens, GFP_KERNEL);
@@ -544,9 +584,8 @@ static long sensor_ioctl(struct v4l2_subdev *sd, unsigned int cmd, void *arg)
 			goto end_set_reg;
 		}
 		for (i = 0; i < reg_s->num_regs; i++) {
-			dev_dbg(&sensor->client->dev, "sensor reg 0x%llx, reg_bytes %lld, val 0x%llx, val_bytes %lld\n",
+			dev_dbg(&sensor->client->dev, "sensor reg 0x%x, reg_bytes %u, val 0x%x, val_bytes %u\n",
 				preg_addr[i], preg_addr_bytes[i], preg_value[i], preg_value_bytes[i]);
-			//custom todo
 			if (g_rkcam_bus_callback[sensor->i2cdev].prkcam_write_i2c_data) {
 				ret = g_rkcam_bus_callback[sensor->i2cdev].prkcam_write_i2c_data(sensor->i2cdev,
 					0,
@@ -555,8 +594,13 @@ static long sensor_ioctl(struct v4l2_subdev *sd, unsigned int cmd, void *arg)
 				if (ret)
 					dev_err(&sensor->client->dev, "failed to write sensor reg\n");
 			} else {
-				dev_err(&sensor->client->dev,
-					"The callback function of sensor write reg is not exist\n");
+				ret = sensor_write_reg(sensor->client,
+						       (u32)preg_addr[i],
+						       (u32)preg_addr_bytes[i],
+						       (u32)preg_value[i],
+						       (u32)preg_value_bytes[i]);
+				if (ret)
+					dev_err(&sensor->client->dev, "failed to write sensor by sensor_write_reg\n");
 			}
 		}
 end_set_reg:
@@ -606,6 +650,39 @@ end_set_reg:
 			 "sensor set sync_mode %d\n",
 			 *sync_mode);
 		break;
+	case RKMODULE_SET_MCLK:
+		mclk = (struct rkmodule_mclk_data *)arg;
+		if (mclk->enable)
+			rkcam_sensor_enable_mclk(0, mclk->mclk_index, mclk->mclk_rate);
+		else
+			rkcam_sensor_disable_mclk(0, mclk->mclk_index);
+
+		dev_info(&sensor->client->dev,
+			 "sensor set mclk, enable %u, index %u, rate %u\n",
+			 mclk->enable, mclk->mclk_index, mclk->mclk_rate);
+		break;
+	case RKMODULE_SET_DEV_INFO:
+		dev_info = (struct rkmodule_dev_info *)arg;
+		if (dev_info->i2c_dev.slave_addr)
+			sensor->client->addr = dev_info->i2c_dev.slave_addr;
+		dev_info(&sensor->client->dev,
+			 "sensor set dev info ,slave addr 0x%x\n",
+			 dev_info->i2c_dev.slave_addr);
+		break;
+	case RKMODULE_SET_CSI_DPHY_PARAM:
+		dphy_param = (struct rkmodule_csi_dphy_param *)arg;
+		if (dphy_param->vendor == rk3588_dcphy_param.vendor)
+			rk3588_dcphy_param = *dphy_param;
+		dev_dbg(&sensor->client->dev,
+			"sensor set dphy param\n");
+		break;
+	case RKMODULE_GET_CSI_DPHY_PARAM:
+		dphy_param = (struct rkmodule_csi_dphy_param *)arg;
+		if (dphy_param->vendor == rk3588_dcphy_param.vendor)
+			*dphy_param = rk3588_dcphy_param;
+		dev_dbg(&sensor->client->dev,
+			"sensor get dphy param\n");
+		break;
 	default:
 		ret = -ENOIOCTLCMD;
 		break;
@@ -629,6 +706,9 @@ static long sensor_compat_ioctl32(struct v4l2_subdev *sd,
 	u8 i2cdev = 0;
 	u8 dev_num = 0;
 	u32 *sync_mode = NULL;
+	struct rkmodule_mclk_data *mclk;
+	struct rkmodule_dev_info *dev_info;
+	struct rkmodule_csi_dphy_param *dphy_param;
 
 	switch (cmd) {
 	case RKMODULE_GET_MODULE_INFO:
@@ -766,6 +846,63 @@ static long sensor_compat_ioctl32(struct v4l2_subdev *sd,
 		else
 			ret = -EFAULT;
 		break;
+	case RKMODULE_SET_MCLK:
+		mclk = kzalloc(sizeof(*mclk), GFP_KERNEL);
+		if (!mclk) {
+			ret = -ENOMEM;
+			return ret;
+		}
+
+		ret = copy_from_user(mclk, up, sizeof(*mclk));
+		if (!ret)
+			ret = sensor_ioctl(sd, cmd, mclk);
+		else
+			ret = -EFAULT;
+		kfree(mclk);
+		break;
+	case RKMODULE_SET_DEV_INFO:
+		dev_info = kzalloc(sizeof(*dev_info), GFP_KERNEL);
+		if (!dev_info) {
+			ret = -ENOMEM;
+			return ret;
+		}
+
+		ret = copy_from_user(dev_info, up, sizeof(*dev_info));
+		if (!ret)
+			ret = sensor_ioctl(sd, cmd, dev_info);
+		else
+			ret = -EFAULT;
+		kfree(dev_info);
+		break;
+	case RKMODULE_SET_CSI_DPHY_PARAM:
+		dphy_param = kzalloc(sizeof(*dphy_param), GFP_KERNEL);
+		if (!dphy_param) {
+			ret = -ENOMEM;
+			return ret;
+		}
+
+		ret = copy_from_user(dphy_param, up, sizeof(*dphy_param));
+		if (!ret)
+			ret = sensor_ioctl(sd, cmd, dphy_param);
+		else
+			ret = -EFAULT;
+		kfree(dphy_param);
+		break;
+	case RKMODULE_GET_CSI_DPHY_PARAM:
+		dphy_param = kzalloc(sizeof(*dphy_param), GFP_KERNEL);
+		if (!dphy_param) {
+			ret = -ENOMEM;
+			return ret;
+		}
+
+		ret = sensor_ioctl(sd, cmd, dphy_param);
+		if (!ret) {
+			ret = copy_to_user(up, dphy_param, sizeof(*dphy_param));
+			if (ret)
+				ret = -EFAULT;
+		}
+		kfree(dphy_param);
+		break;
 	default:
 		ret = -ENOIOCTLCMD;
 		break;
@@ -893,19 +1030,25 @@ static int sensor_get_selection(struct v4l2_subdev *sd,
 {
 	struct sensor *sensor = to_sensor(sd);
 
-	if (sel->target == V4L2_SEL_TGT_CROP_BOUNDS &&
-	    sensor->crop.is_enable &&
-	    (sensor->crop.left + sensor->crop.width) <= sensor->cur_mode->width &&
-	    (sensor->crop.top + sensor->crop.height) <= sensor->cur_mode->height) {
-		sel->r.left = sensor->crop.left;
-		sel->r.width = sensor->crop.width;
-		sel->r.top = sensor->crop.top;
-		sel->r.height = sensor->crop.height;
-		dev_info(&sensor->client->dev,
-			 "%s left %d, width %d, top %d, height %d\n",
-			 __func__,
-			 sensor->crop.left, sensor->crop.width,
-			 sensor->crop.top, sensor->crop.height);
+	if (sel->target == V4L2_SEL_TGT_CROP_BOUNDS) {
+		if (sensor->crop.is_enable &&
+		    (sensor->crop.left + sensor->crop.width) <= sensor->cur_mode->width &&
+		    (sensor->crop.top + sensor->crop.height) <= sensor->cur_mode->height) {
+			sel->r.left = sensor->crop.left;
+			sel->r.width = sensor->crop.width;
+			sel->r.top = sensor->crop.top;
+			sel->r.height = sensor->crop.height;
+			dev_dbg(&sensor->client->dev,
+				"%s left %d, width %d, top %d, height %d\n",
+				__func__,
+				sensor->crop.left, sensor->crop.width,
+				sensor->crop.top, sensor->crop.height);
+		} else {
+			sel->r.left = 0;
+			sel->r.width = sensor->cur_mode->width;
+			sel->r.top = 0;
+			sel->r.height = sensor->cur_mode->height;
+		}
 		return 0;
 	}
 	dev_err(&sensor->client->dev,

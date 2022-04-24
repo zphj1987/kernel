@@ -71,6 +71,7 @@ enum rkisp_isp_ver {
 	ISP_V20 = 0x40,
 	ISP_V21 = 0x50,
 	ISP_V30 = 0x60,
+	ISP_V32 = 0x70,
 };
 
 enum rkisp_sd_type {
@@ -110,11 +111,9 @@ enum rkisp_fmt_raw_pat_type {
 struct rkisp_buffer {
 	struct vb2_v4l2_buffer vb;
 	struct list_head queue;
+	void *vaddr[VIDEO_MAX_PLANES];
+	u32 buff_addr[VIDEO_MAX_PLANES];
 	int dev_id;
-	union {
-		u32 buff_addr[VIDEO_MAX_PLANES];
-		void *vaddr[VIDEO_MAX_PLANES];
-	};
 };
 
 struct rkisp_dummy_buffer {
@@ -133,6 +132,7 @@ struct rkisp_dummy_buffer {
 
 extern int rkisp_debug;
 extern bool rkisp_monitor;
+extern bool rkisp_irq_dbg;
 extern u64 rkisp_debug_reg;
 extern struct platform_driver rkisp_plat_drv;
 
@@ -161,15 +161,24 @@ static inline struct vb2_queue *to_vb2_queue(struct file *file)
 
 void rkisp_write(struct rkisp_device *dev, u32 reg, u32 val, bool is_direct);
 u32 rkisp_read(struct rkisp_device *dev, u32 reg, bool is_direct);
-u32 rkisp_read_reg_cache(struct rkisp_device *dev, u32 reg);
 void rkisp_set_bits(struct rkisp_device *dev, u32 reg, u32 mask, u32 val, bool is_direct);
 void rkisp_clear_bits(struct rkisp_device *dev, u32 reg, u32 mask, bool is_direct);
+
+void rkisp_write_reg_cache(struct rkisp_device *dev, u32 reg, u32 val);
+u32 rkisp_read_reg_cache(struct rkisp_device *dev, u32 reg);
+void rkisp_set_reg_cache_bits(struct rkisp_device *dev, u32 reg, u32 mask, u32 val);
+void rkisp_clear_reg_cache_bits(struct rkisp_device *dev, u32 reg, u32 mask);
+
 /* for dual isp, config for next isp reg */
 void rkisp_next_write(struct rkisp_device *dev, u32 reg, u32 val, bool is_direct);
 u32 rkisp_next_read(struct rkisp_device *dev, u32 reg, bool is_direct);
-u32 rkisp_next_read_reg_cache(struct rkisp_device *dev, u32 reg);
 void rkisp_next_set_bits(struct rkisp_device *dev, u32 reg, u32 mask, u32 val, bool is_direct);
 void rkisp_next_clear_bits(struct rkisp_device *dev, u32 reg, u32 mask, bool is_direct);
+
+void rkisp_next_write_reg_cache(struct rkisp_device *dev, u32 reg, u32 val);
+u32 rkisp_next_read_reg_cache(struct rkisp_device *dev, u32 reg);
+void rkisp_next_set_reg_cache_bits(struct rkisp_device *dev, u32 reg, u32 mask, u32 val);
+void rkisp_next_clear_reg_cache_bits(struct rkisp_device *dev, u32 reg, u32 mask);
 
 static inline void
 rkisp_unite_write(struct rkisp_device *dev, u32 reg, u32 val, bool is_direct, bool is_unite)
