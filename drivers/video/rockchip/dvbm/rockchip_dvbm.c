@@ -30,6 +30,7 @@ static struct dvbm_ctx *g_ctx;
 #define DVBM_DEBUG_IRQ	0x00000002
 #define DVBM_DEBUG_REG	0x00000004
 #define DVBM_DEBUG_DUMP	0x00000008
+#define DVBM_DEBUG_FRM	0x00000010
 
 #define dvbm_debug(fmt, args...)				\
 	do {							\
@@ -52,6 +53,12 @@ static struct dvbm_ctx *g_ctx;
 #define dvbm_debug_dump(fmt, args...)				\
 	do {							\
 		if (unlikely(dvbm_debug & (DVBM_DEBUG_DUMP)))	\
+			pr_info(fmt, ##args);			\
+	} while (0)
+
+#define dvbm_debug_frm(fmt, args...)				\
+	do {							\
+		if (unlikely(dvbm_debug & (DVBM_DEBUG_FRM)))	\
 			pr_info(fmt, ##args);			\
 	} while (0)
 
@@ -110,21 +117,25 @@ enum dvbm_flow {
 
 #define DVBM_REG_OFFSET 0x2c
 
-#define SOFT_DVBM
+#define SOFT_DVBM 1
+#define UPDATE_LINE_CNT 0
 
 static void rk_dvbm_set_reg(struct dvbm_ctx *ctx, u32 offset, u32 val)
 {
-	#ifndef SOFT_DVBM
-	dvbm_debug_reg("write reg[%d] 0x%x = 0x%08x\n", offset >> 2, offset, val);
-	writel(val, ctx->reg_base + offset);
-	#endif
+	if (!SOFT_DVBM) {
+		dvbm_debug_reg("write reg[%d] 0x%x = 0x%08x\n", offset >> 2, offset, val);
+		writel(val, ctx->reg_base + offset);
+	}
 }
 
 static u32 rk_dvbm_read_reg(struct dvbm_ctx *ctx, u32 offset)
 {
-	u32 val = readl(ctx->reg_base + offset);
+	u32 val = 0;
 
-	dvbm_debug_reg("read reg[%d] 0x%x = 0x%08x\n", offset >> 2, offset, val);
+	if (!SOFT_DVBM) {
+		val = readl(ctx->reg_base + offset);
+		dvbm_debug_reg("read reg[%d] 0x%x = 0x%08x\n", offset >> 2, offset, val);
+	}
 	return val;
 }
 
@@ -202,13 +213,13 @@ static void rk_dvbm_show_time(struct dvbm_ctx *ctx)
 
 static void rk_dvbm_update_isp_frm_info(struct dvbm_ctx *ctx, u32 line_cnt)
 {
+#if UPDATE_LINE_CNT
 	struct dvbm_isp_frm_info *frm_info = &ctx->isp_frm_info;
 
-	/* wrap frame_cnt 0 - 255 */
-	frm_info->frame_cnt = ctx->isp_frm_start % 256;
-	frm_info->line_cnt = line_cnt;
+	frm_info->line_cnt = ALIGN(line_cnt, 32);
+	dvbm_debug_frm("dvbm frame %d line %d\n", frm_info->frame_cnt, frm_info->line_cnt);
 	dvbm2enc_callback(ctx, DVBM_VEPU_NOTIFY_FRM_INFO, frm_info);
-
+#endif
 }
 
 static int rk_dvbm_setup_iobuf(struct dvbm_ctx *ctx)
@@ -236,6 +247,11 @@ static int rk_dvbm_setup_iobuf(struct dvbm_ctx *ctx)
 	addr_base->oful_thdc = cfg->ybuf_lstd;
 
 	ctx->isp_max_lcnt = cfg->ybuf_fstd / cfg->ybuf_lstd;
+	ctx->wrap_line = (cfg->ybuf_top - cfg->ybuf_bot) / cfg->ybuf_lstd;
+	ctx->isp_frm_info.frame_cnt = 0;
+	ctx->isp_frm_info.line_cnt = 0;
+	ctx->isp_frm_info.max_line_cnt = ALIGN(ctx->isp_max_lcnt, 32);
+	ctx->isp_frm_info.wrap_line = ctx->wrap_line;
 	dvbm_debug("dma_addr 0x%08x y_lstd %d y_fstd %d\n",
 		   cfg->dma_addr, cfg->ybuf_lstd, cfg->ybuf_fstd);
 	dvbm_debug("ybot 0x%x top 0x%x cbuf bot 0x%x top 0x%x\n",
@@ -246,6 +262,10 @@ static int rk_dvbm_setup_iobuf(struct dvbm_ctx *ctx)
 	for (i = 0; i < sizeof(struct rk_dvbm_base) / sizeof(u32); i++)
 		rk_dvbm_set_reg(ctx, i * sizeof(u32) + DVBM_REG_OFFSET, data[i]);
 
+	for (i = 1; i < 65536; i++)
+		if (!((addr_base->ybuf_fstd * i) % (cfg->ybuf_top - cfg->ybuf_bot)))
+			break;
+	ctx->loopcnt = i;
 	return 0;
 }
 
@@ -412,13 +432,14 @@ EXPORT_SYMBOL(rk_dvbm_set_cb);
 
 static void rk_dvbm_update_next_adr(struct dvbm_ctx *ctx)
 {
-	u32 frame_cnt = ctx->isp_frm_info.frame_cnt;
+	u32 frame_cnt = ctx->isp_frm_start;
 	struct dvbm_isp_cfg_t *isp_cfg = &ctx->isp_cfg;
 	struct dvbm_addr_cfg *vepu_cfg = &ctx->vepu_cfg;
 	u32 y_wrap_size = isp_cfg->ybuf_top - isp_cfg->ybuf_bot;
 	u32 c_wrap_size = isp_cfg->cbuf_top - isp_cfg->cbuf_bot;
 	u32 s_off;
 
+	frame_cnt = (frame_cnt + 1) % (ctx->loopcnt);
 	s_off = (frame_cnt * isp_cfg->ybuf_fstd) % y_wrap_size;
 	vepu_cfg->ybuf_sadr = isp_cfg->dma_addr + isp_cfg->ybuf_bot + s_off;
 
@@ -450,25 +471,35 @@ int rk_dvbm_ctrl(struct dvbm_port *port, enum dvbm_cmd cmd, void *arg)
 	} break;
 	case DVBM_ISP_FRM_START: {
 		ctx->isp_frm_start = *(u32 *)arg;
-		ctx->isp_frm_quater_cnt = 0;
 		rk_dvbm_update_isp_frm_info(ctx, 0);
-		rk_dvbm_update_next_adr(ctx);
 		rk_dvbm_show_time(ctx);
 	} break;
 	case DVBM_ISP_FRM_END: {
-		u32 line_cnt = ALIGN(ctx->isp_max_lcnt, 32);
+		u32 line_cnt = ctx->isp_max_lcnt;
 
 		ctx->isp_frm_end = *(u32 *)arg;
+		/* wrap frame_cnt 0 - 255 */
+		ctx->isp_frm_info.frame_cnt = (ctx->isp_frm_start + 1) % 256;
+		rk_dvbm_update_next_adr(ctx);
 		rk_dvbm_update_isp_frm_info(ctx, line_cnt);
 		dvbm_debug("isp frame end[%d : %d]\n", ctx->isp_frm_start, ctx->isp_frm_end);
 	} break;
 	case DVBM_ISP_FRM_QUARTER: {
 		u32 line_cnt;
 
-		ctx->isp_frm_quater_cnt++;
-		line_cnt = ctx->isp_frm_quater_cnt * ctx->isp_max_lcnt / 4;
-		line_cnt = ALIGN(line_cnt, 32);
+		line_cnt = ctx->isp_max_lcnt >> 2;
+		rk_dvbm_update_isp_frm_info(ctx, line_cnt);
+	} break;
+	case DVBM_ISP_FRM_HALF: {
+		u32 line_cnt;
 
+		line_cnt = ctx->isp_max_lcnt >> 1;
+		rk_dvbm_update_isp_frm_info(ctx, line_cnt);
+	} break;
+	case DVBM_ISP_FRM_THREE_QUARTERS: {
+		u32 line_cnt;
+
+		line_cnt = (ctx->isp_max_lcnt >> 2) * 3;
 		rk_dvbm_update_isp_frm_info(ctx, line_cnt);
 	} break;
 	case DVBM_VEPU_GET_ADR: {
@@ -481,7 +512,7 @@ int rk_dvbm_ctrl(struct dvbm_port *port, enum dvbm_cmd cmd, void *arg)
 		dvbm_adr->cbuf_bot = addr_base->cbuf_bot;
 		dvbm_adr->cbuf_sadr = ctx->vepu_cfg.cbuf_sadr;
 		dvbm_adr->ybuf_sadr = ctx->vepu_cfg.ybuf_sadr;
-		dvbm_adr->overflow = ctx->isp_frm_quater_cnt > 2;
+		dvbm_adr->overflow = ctx->isp_frm_info.line_cnt >= ctx->wrap_line;
 		dvbm_adr->frame_id = ctx->isp_frm_info.frame_cnt;
 		dvbm_adr->line_cnt = ctx->isp_frm_info.line_cnt;
 	} break;
@@ -643,13 +674,15 @@ static int rk_dvbm_probe(struct platform_device *pdev)
 		ret = -ENODEV;
 		goto failed;
 	}
-	ret = pm_runtime_get_sync(dev);
-	if (ret)
-		dev_err(dev, "pm get failed!\n");
+	if (!SOFT_DVBM) {
+		ret = pm_runtime_get_sync(dev);
+		if (ret)
+			dev_err(dev, "pm get failed!\n");
+		ret = rk_dvbm_clk_on(ctx);
+		if (ret)
+			goto failed;
+	}
 	g_ctx = ctx;
-	ret = rk_dvbm_clk_on(ctx);
-	if (ret)
-		goto failed;
 	rk_dvbm_reg_init(ctx);
 	ctx->ignore_ovfl = 1;
 	ctx->dump_s = 0x80;
@@ -676,8 +709,10 @@ static int rk_dvbm_remove(struct platform_device *pdev)
 	struct device *dev = &pdev->dev;
 
 	dev_info(dev, "remove device\n");
-	rk_dvbm_clk_off(g_ctx);
-	pm_runtime_put(dev);
+	if (!SOFT_DVBM) {
+		rk_dvbm_clk_off(g_ctx);
+		pm_runtime_put(dev);
+	}
 	pm_runtime_disable(dev);
 
 	return 0;

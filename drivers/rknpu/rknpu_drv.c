@@ -10,6 +10,7 @@
 #include <linux/interrupt.h>
 #include <linux/irq.h>
 #include <linux/irqdomain.h>
+#include <linux/iopoll.h>
 #include <linux/module.h>
 #include <linux/of.h>
 #include <linux/of_device.h>
@@ -34,6 +35,7 @@
 #include <linux/regmap.h>
 
 #ifndef FPGA_PLATFORM
+#include <soc/rockchip/rockchip_iommu.h>
 #include <soc/rockchip/rockchip_opp_select.h>
 #include <soc/rockchip/rockchip_system_monitor.h>
 #include <soc/rockchip/rockchip_ipa.h>
@@ -58,6 +60,8 @@
 #endif
 
 #define POWER_DOWN_FREQ 200000000
+#define NPU_MMU_DISABLED_POLL_PERIOD_US 1000
+#define NPU_MMU_DISABLED_POLL_TIMEOUT_US 20000
 
 static int bypass_irq_handler;
 module_param(bypass_irq_handler, int, 0644);
@@ -187,8 +191,7 @@ static void rknpu_power_off_delay_work(struct work_struct *power_off_work)
 	mutex_unlock(&rknpu_dev->power_lock);
 }
 
-static int rknpu_action(struct rknpu_device *rknpu_dev,
-			struct rknpu_action *args)
+int rknpu_action(struct rknpu_device *rknpu_dev, struct rknpu_action *args)
 {
 	int ret = -EINVAL;
 
@@ -609,9 +612,15 @@ static int rknpu_power_on(struct rknpu_device *rknpu_dev)
 		return ret;
 	}
 
+#ifndef FPGA_PLATFORM
+#if KERNEL_VERSION(5, 10, 0) <= LINUX_VERSION_CODE
+	rockchip_monitor_volt_adjust_lock(rknpu_dev->mdev_info);
+#endif
+#endif
+
 	if (rknpu_dev->multiple_domains) {
 		if (rknpu_dev->genpd_dev_npu0) {
-#if KERNEL_VERSION(5, 4, 0) < LINUX_VERSION_CODE
+#if KERNEL_VERSION(5, 5, 0) < LINUX_VERSION_CODE
 			ret = pm_runtime_resume_and_get(
 				rknpu_dev->genpd_dev_npu0);
 #else
@@ -622,11 +631,11 @@ static int rknpu_power_on(struct rknpu_device *rknpu_dev)
 					dev,
 					"failed to get pm runtime for npu0, ret = %d\n",
 					ret);
-				return ret;
+				goto out;
 			}
 		}
 		if (rknpu_dev->genpd_dev_npu1) {
-#if KERNEL_VERSION(5, 4, 0) < LINUX_VERSION_CODE
+#if KERNEL_VERSION(5, 5, 0) < LINUX_VERSION_CODE
 			ret = pm_runtime_resume_and_get(
 				rknpu_dev->genpd_dev_npu1);
 #else
@@ -637,11 +646,11 @@ static int rknpu_power_on(struct rknpu_device *rknpu_dev)
 					dev,
 					"failed to get pm runtime for npu1, ret = %d\n",
 					ret);
-				return ret;
+				goto out;
 			}
 		}
 		if (rknpu_dev->genpd_dev_npu2) {
-#if KERNEL_VERSION(5, 4, 0) < LINUX_VERSION_CODE
+#if KERNEL_VERSION(5, 5, 0) < LINUX_VERSION_CODE
 			ret = pm_runtime_resume_and_get(
 				rknpu_dev->genpd_dev_npu2);
 #else
@@ -652,7 +661,7 @@ static int rknpu_power_on(struct rknpu_device *rknpu_dev)
 					dev,
 					"failed to get pm runtime for npu2, ret = %d\n",
 					ret);
-				return ret;
+				goto out;
 			}
 		}
 	}
@@ -661,8 +670,14 @@ static int rknpu_power_on(struct rknpu_device *rknpu_dev)
 		LOG_DEV_ERROR(dev,
 			      "failed to get pm runtime for rknpu, ret = %d\n",
 			      ret);
-		return ret;
 	}
+
+out:
+#ifndef FPGA_PLATFORM
+#if KERNEL_VERSION(5, 10, 0) <= LINUX_VERSION_CODE
+	rockchip_monitor_volt_adjust_unlock(rknpu_dev->mdev_info);
+#endif
+#endif
 
 	return ret;
 }
@@ -671,18 +686,44 @@ static int rknpu_power_off(struct rknpu_device *rknpu_dev)
 {
 	struct device *dev = rknpu_dev->dev;
 
+#ifndef FPGA_PLATFORM
+	int ret;
+	bool val;
+
+#if KERNEL_VERSION(5, 10, 0) <= LINUX_VERSION_CODE
+	rockchip_monitor_volt_adjust_lock(rknpu_dev->mdev_info);
+#endif
+#endif
+
 	pm_runtime_put_sync(dev);
 
-	/*
-	 * Because IOMMU's runtime suspend callback is asynchronous,
-	 * So it may be executed after the NPU is turned off after PD/CLK/VD,
-	 * and the runtime suspend callback has a register access.
-	 * If the PD/VD/CLK is closed, the register access will crash.
-	 * So add a delay to avoid this problem.
-	 */
-	msleep(20);
-
 	if (rknpu_dev->multiple_domains) {
+#ifndef FPGA_PLATFORM
+		/*
+		 * Because IOMMU's runtime suspend callback is asynchronous,
+		 * So it may be executed after the NPU is turned off after PD/CLK/VD,
+		 * and the runtime suspend callback has a register access.
+		 * If the PD/VD/CLK is closed, the register access will crash.
+		 * As a workaround, it's safe to close pd stuff until iommu disabled.
+		 * If pm runtime framework can handle this issue in the future, remove
+		 * this.
+		 */
+		ret = readx_poll_timeout(rockchip_iommu_is_enabled, dev, val,
+					 !val, NPU_MMU_DISABLED_POLL_PERIOD_US,
+					 NPU_MMU_DISABLED_POLL_TIMEOUT_US);
+		if (ret) {
+			LOG_DEV_ERROR(dev, "iommu still enabled\n");
+			pm_runtime_get_sync(dev);
+#if KERNEL_VERSION(5, 10, 0) <= LINUX_VERSION_CODE
+			rockchip_monitor_volt_adjust_unlock(
+				rknpu_dev->mdev_info);
+#endif
+			return ret;
+		}
+#else
+		if (rknpu_dev->iommu_en)
+			msleep(20);
+#endif
 		if (rknpu_dev->genpd_dev_npu2)
 			pm_runtime_put_sync(rknpu_dev->genpd_dev_npu2);
 		if (rknpu_dev->genpd_dev_npu1)
@@ -690,6 +731,12 @@ static int rknpu_power_off(struct rknpu_device *rknpu_dev)
 		if (rknpu_dev->genpd_dev_npu0)
 			pm_runtime_put_sync(rknpu_dev->genpd_dev_npu0);
 	}
+
+#ifndef FPGA_PLATFORM
+#if KERNEL_VERSION(5, 10, 0) <= LINUX_VERSION_CODE
+	rockchip_monitor_volt_adjust_unlock(rknpu_dev->mdev_info);
+#endif
+#endif
 
 	clk_bulk_disable_unprepare(rknpu_dev->num_clks, rknpu_dev->clks);
 
@@ -729,8 +776,16 @@ static int npu_opp_helper(struct dev_pm_set_opp_data *data)
 	struct rockchip_opp_info *opp_info = &rknpu_dev->opp_info;
 	unsigned long old_freq = data->old_opp.rate;
 	unsigned long new_freq = data->new_opp.rate;
+	bool is_set_rm = true;
+	bool is_set_clk = true;
 	u32 target_rm = UINT_MAX;
 	int ret = 0;
+
+	if (!pm_runtime_active(dev)) {
+		is_set_rm = false;
+		if (opp_info->scmi_clk)
+			is_set_clk = false;
+	}
 
 	ret = clk_bulk_prepare_enable(opp_info->num_clks, opp_info->clks);
 	if (ret < 0) {
@@ -746,7 +801,7 @@ static int npu_opp_helper(struct dev_pm_set_opp_data *data)
 	/* Scaling up? Scale voltage before frequency */
 	if (new_freq >= old_freq) {
 		rockchip_set_intermediate_rate(dev, opp_info, clk, old_freq,
-					       new_freq, true, true);
+					       new_freq, true, is_set_clk);
 		ret = regulator_set_voltage(mem_reg, new_supply_mem->u_volt,
 					    INT_MAX);
 		if (ret) {
@@ -763,19 +818,17 @@ static int npu_opp_helper(struct dev_pm_set_opp_data *data)
 				      new_supply_vdd->u_volt);
 			goto restore_voltage;
 		}
-		rockchip_set_read_margin(dev, opp_info, target_rm, true);
-		ret = clk_set_rate(clk, new_freq);
-		if (ret) {
+		rockchip_set_read_margin(dev, opp_info, target_rm, is_set_rm);
+		if (is_set_clk && clk_set_rate(clk, new_freq)) {
 			LOG_DEV_ERROR(dev, "failed to set clk rate: %d\n", ret);
 			goto restore_rm;
 		}
 		/* Scaling down? Scale voltage after frequency */
 	} else {
 		rockchip_set_intermediate_rate(dev, opp_info, clk, old_freq,
-					       new_freq, false, true);
-		rockchip_set_read_margin(dev, opp_info, target_rm, true);
-		ret = clk_set_rate(clk, new_freq);
-		if (ret) {
+					       new_freq, false, is_set_clk);
+		rockchip_set_read_margin(dev, opp_info, target_rm, is_set_rm);
+		if (is_set_clk && clk_set_rate(clk, new_freq)) {
 			LOG_DEV_ERROR(dev, "failed to set clk rate: %d\n", ret);
 			goto restore_rm;
 		}
@@ -802,13 +855,14 @@ static int npu_opp_helper(struct dev_pm_set_opp_data *data)
 	return 0;
 
 restore_freq:
-	if (clk_set_rate(clk, old_freq))
+	if (is_set_clk && clk_set_rate(clk, old_freq))
 		LOG_DEV_ERROR(dev, "failed to restore old-freq %lu Hz\n",
 			      old_freq);
 restore_rm:
 	rockchip_get_read_margin(dev, opp_info, old_supply_vdd->u_volt,
 				 &target_rm);
-	rockchip_set_read_margin(dev, opp_info, opp_info->current_rm, true);
+	rockchip_set_read_margin(dev, opp_info, opp_info->current_rm,
+				 is_set_rm);
 restore_voltage:
 	regulator_set_voltage(mem_reg, old_supply_mem->u_volt, INT_MAX);
 	regulator_set_voltage(vdd_reg, old_supply_vdd->u_volt, INT_MAX);
@@ -834,7 +888,9 @@ static int npu_devfreq_target(struct device *dev, unsigned long *freq,
 	opp_volt = dev_pm_opp_get_voltage(opp);
 	dev_pm_opp_put(opp);
 
+#if KERNEL_VERSION(5, 10, 0) <= LINUX_VERSION_CODE
 	rockchip_monitor_volt_adjust_lock(rknpu_dev->mdev_info);
+#endif
 	ret = dev_pm_opp_set_rate(dev, *freq);
 	if (!ret) {
 		rknpu_dev->current_freq = *freq;
@@ -843,7 +899,9 @@ static int npu_devfreq_target(struct device *dev, unsigned long *freq,
 				*freq;
 		rknpu_dev->current_volt = opp_volt;
 	}
+#if KERNEL_VERSION(5, 10, 0) <= LINUX_VERSION_CODE
 	rockchip_monitor_volt_adjust_unlock(rknpu_dev->mdev_info);
+#endif
 
 	return ret;
 }
@@ -985,7 +1043,8 @@ static int rk3588_npu_set_read_margin(struct device *dev,
 	for (i = 0; i < 3; i++) {
 		ret = regmap_read(opp_info->grf, offset, &val);
 		if (ret < 0) {
-			dev_err(dev, "failed to get rm from 0x%x\n", offset);
+			LOG_DEV_ERROR(dev, "failed to get rm from 0x%x\n",
+				      offset);
 			return ret;
 		}
 		val &= ~0x1c;
@@ -1496,9 +1555,10 @@ static int rknpu_probe(struct platform_device *pdev)
 	}
 	INIT_DEFERRABLE_WORK(&rknpu_dev->power_off_work,
 			     rknpu_power_off_delay_work);
+	rknpu_power_off(rknpu_dev);
 	rknpu_dev->is_powered = false;
 	atomic_set(&rknpu_dev->power_refcount, 0);
-	rknpu_power_off(rknpu_dev);
+	atomic_set(&rknpu_dev->cmdline_power_refcount, 0);
 
 	rknpu_debugger_init(rknpu_dev);
 	rknpu_init_timer(rknpu_dev);
@@ -1617,7 +1677,7 @@ static struct platform_driver rknpu_driver = {
 		.owner = THIS_MODULE,
 		.name = "RKNPU",
 #ifndef FPGA_PLATFORM
-#if KERNEL_VERSION(5, 4, 0) < LINUX_VERSION_CODE
+#if KERNEL_VERSION(5, 5, 0) < LINUX_VERSION_CODE
 		.pm = &rknpu_pm_ops,
 #endif
 #endif

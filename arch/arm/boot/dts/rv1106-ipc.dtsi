@@ -2,10 +2,11 @@
 /*
  * Copyright (c) 2022 Rockchip Electronics Co., Ltd.
  */
+#include "rv1106-amp.dtsi"
 
 / {
 	chosen {
-		bootargs = "earlycon=uart8250,mmio32,0xff4c0000 console=ttyFIQ0 rootwait snd_soc_core.prealloc_buffer_size_kbytes=16";
+		bootargs = "earlycon=uart8250,mmio32,0xff4c0000 console=ttyFIQ0 rootwait snd_soc_core.prealloc_buffer_size_kbytes=16 coherent_pool=0";
 	};
 
 	acodec_sound: acodec-sound {
@@ -279,6 +280,10 @@
 	disable-wp;
 	pinctrl-names = "default";
 	pinctrl-0 = <&sdmmc0_clk &sdmmc0_cmd &sdmmc0_det &sdmmc0_bus4>;
+	status = "okay";
+};
+
+&tsadc {
 	status = "okay";
 };
 

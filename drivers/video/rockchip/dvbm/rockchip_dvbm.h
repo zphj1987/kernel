@@ -202,12 +202,13 @@ struct dvbm_ctx {
 	u32 isp_frm_start;
 	u32 isp_frm_end;
 	ktime_t isp_frm_time;
-	u32 isp_frm_quater_cnt;
+	u32 wrap_line;
 
 	/* debug infos */
 	u32 dump_s;
 	u32 dump_e;
 	u32 ignore_ovfl;
+	u32 loopcnt;
 };
 
 #endif

@@ -1529,15 +1529,6 @@ static int rkisp_config_isp(struct rkisp_device *dev)
 
 	/* interrupt mask */
 	irq_mask |= CIF_ISP_FRAME | CIF_ISP_V_START | CIF_ISP_PIC_SIZE_ERROR;
-	if (dev->cap_dev.wrap_line) {
-		irq_mask |= ISP3X_OUT_FRM_QUARTER | ISP3X_OUT_FRM_HALF |
-			    ISP3X_OUT_FRM_END;
-		/* line to irq */
-		rkisp_write(dev, ISP32_ISP_IRQ_CFG0,
-			    (in_crop->height / 2) << 16 | in_crop->height / 4, false);
-		rkisp_write(dev, ISP32_ISP_IRQ_CFG1,
-			    in_crop->height / 4 * 3, false);
-	}
 	if (dev->isp_ver == ISP_V20 || dev->isp_ver == ISP_V21 ||
 	    dev->isp_ver == ISP_V30 || dev->isp_ver == ISP_V32)
 		irq_mask |= ISP2X_LSC_LUT_ERR;
@@ -1695,6 +1686,9 @@ static int rkisp_config_path(struct rkisp_device *dev)
 		v4l2_err(&dev->v4l2_dev, "Invalid input\n");
 		ret = -EINVAL;
 	}
+
+	if (dev->isp_ver == ISP_V32)
+		dpcl |= BIT(0);
 
 	rkisp_unite_set_bits(dev, CIF_VI_DPCL, 0, dpcl, true,
 			     dev->hw_dev->is_unite);
@@ -3145,6 +3139,9 @@ static long rkisp_ioctl(struct v4l2_subdev *sd, unsigned int cmd, void *arg)
 	case RKISP_CMD_INFO2DDR:
 		ret = rkisp_params_info2ddr_cfg(&isp_dev->params_vdev, arg);
 		break;
+	case RKISP_CMD_MESHBUF_FREE:
+		rkisp_params_meshbuf_free(&isp_dev->params_vdev, *(u64 *)arg);
+		break;
 	default:
 		ret = -ENOIOCTLCMD;
 	}
@@ -3167,6 +3164,7 @@ static long rkisp_compat_ioctl32(struct v4l2_subdev *sd,
 	struct isp2x_buf_idxfd idxfd;
 	struct rkisp_info2ddr info2ddr;
 	long ret = 0;
+	u64 module_id;
 
 	if (!up && cmd != RKISP_CMD_FREE_SHARED_BUF)
 		return -EINVAL;
@@ -3237,6 +3235,11 @@ static long rkisp_compat_ioctl32(struct v4l2_subdev *sd,
 		ret = rkisp_ioctl(sd, cmd, &info2ddr);
 		if (!ret && copy_to_user(up, &info2ddr, sizeof(info2ddr)))
 			ret = -EFAULT;
+		break;
+	case RKISP_CMD_MESHBUF_FREE:
+		if (copy_from_user(&module_id, up, sizeof(module_id)))
+			return -EFAULT;
+		ret = rkisp_ioctl(sd, cmd, &module_id);
 		break;
 	default:
 		ret = -ENOIOCTLCMD;
@@ -3315,6 +3318,7 @@ int rkisp_register_isp_subdev(struct rkisp_device *isp_dev,
 	struct v4l2_subdev *sd = &isp_sdev->sd;
 	int ret;
 
+	mutex_init(&isp_dev->buf_lock);
 	spin_lock_init(&isp_dev->cmsk_lock);
 	spin_lock_init(&isp_dev->rdbk_lock);
 	ret = kfifo_alloc(&isp_dev->rdbk_kfifo,

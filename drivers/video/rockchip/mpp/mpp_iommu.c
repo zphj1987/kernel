@@ -196,7 +196,7 @@ struct mpp_dma_buffer *mpp_dma_import_fd(struct mpp_iommu_info *iommu_info,
 	if (IS_ERR(dmabuf)) {
 		ret = PTR_ERR(dmabuf);
 		mpp_err("dma_buf_get fd %d failed(%d)\n", fd, ret);
-		return NULL;
+		return ERR_PTR(ret);
 	}
 	/* A new DMA buffer */
 	mutex_lock(&dma->list_mutex);
@@ -441,6 +441,8 @@ mpp_iommu_probe(struct device *dev)
 	info->pdev = pdev;
 	info->group = group;
 	info->domain = domain;
+	info->irq = platform_get_irq(pdev, 0);
+	info->got_irq = (info->irq < 0) ? false : true;
 
 	return info;
 

@@ -18,7 +18,11 @@ void rkisp_write(struct rkisp_device *dev, u32 reg, u32 val, bool is_direct)
 	*flag = SW_REG_CACHE;
 	if (dev->hw_dev->is_single || is_direct) {
 		*flag = SW_REG_CACHE_SYNC;
+		if (dev->isp_ver == ISP_V32 && reg <= 0x200)
+			rv1106_sdmmc_get_lock();
 		writel(val, dev->hw_dev->base_addr + reg);
+		if (dev->isp_ver == ISP_V32 && reg <= 0x200)
+			rv1106_sdmmc_put_lock();
 	}
 }
 
@@ -166,6 +170,8 @@ int rkisp_alloc_buffer(struct rkisp_device *dev,
 	void *mem_priv;
 	int ret = 0;
 
+	mutex_lock(&dev->buf_lock);
+
 	if (!buf->size) {
 		ret = -EINVAL;
 		goto err;
@@ -206,8 +212,10 @@ int rkisp_alloc_buffer(struct rkisp_device *dev,
 	v4l2_dbg(1, rkisp_debug, &dev->v4l2_dev,
 		 "%s buf:0x%x~0x%x size:%d\n", __func__,
 		 (u32)buf->dma_addr, (u32)buf->dma_addr + buf->size, buf->size);
+	mutex_unlock(&dev->buf_lock);
 	return ret;
 err:
+	mutex_unlock(&dev->buf_lock);
 	dev_err(dev->dev, "%s failed ret:%d\n", __func__, ret);
 	return ret;
 }
@@ -217,6 +225,7 @@ void rkisp_free_buffer(struct rkisp_device *dev,
 {
 	const struct vb2_mem_ops *g_ops = dev->hw_dev->mem_ops;
 
+	mutex_lock(&dev->buf_lock);
 	if (buf && buf->mem_priv) {
 		v4l2_dbg(1, rkisp_debug, &dev->v4l2_dev,
 			 "%s buf:0x%x~0x%x\n", __func__,
@@ -232,6 +241,7 @@ void rkisp_free_buffer(struct rkisp_device *dev,
 		buf->is_need_vaddr = false;
 		buf->is_need_dmafd = false;
 	}
+	mutex_unlock(&dev->buf_lock);
 }
 
 void rkisp_prepare_buffer(struct rkisp_device *dev,
