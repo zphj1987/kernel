@@ -1,5 +1,6 @@
 # SPDX-License-Identifier: GPL-2.0
 dtbo-$(CONFIG_ARCH_ROCKCHIP) += \
+	rock-5ab-camera-imx415.dtbo \
 	uart2-m0.dtbo \
 	uart3-m1.dtbo \
 	uart4-m2.dtbo \
