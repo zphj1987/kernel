@@ -9,6 +9,7 @@
 
 #include "rga3_reg_info.h"
 #include "rga_common.h"
+#include "rga_debugger.h"
 
 #define FACTOR_MAX ((int)(2 << 15))
 
@@ -1349,15 +1350,16 @@ void rga_cmd_to_rga3_cmd(struct rga_req *req_rga, struct rga3_req *req)
 		}
 	}
 
-	/*
-	 * Layer binding:
-	 *     src => win1
-	 *     src1/dst => win0
-	 *     dst => wr
-	 */
 	/* simple win can not support dst offset */
 	if ((!((req_rga->alpha_rop_flag) & 1)) &&
-	    (req_rga->dst.x_offset == 0 && req_rga->dst.y_offset == 0)) {
+	    (req_rga->dst.x_offset == 0 && req_rga->dst.y_offset == 0) &&
+	    (req_rga->src.yrgb_addr != req_rga->dst.yrgb_addr)) {
+		/*
+		 * ABB mode Layer binding:
+		 *     src => win0
+		 *     dst => wr
+		 */
+
 		set_win_info(&req->win0, &req_rga->src);
 
 		/* enable win0 rotate */
@@ -1373,6 +1375,13 @@ void rga_cmd_to_rga3_cmd(struct rga_req *req_rga, struct rga3_req *req)
 		req->win0.format = req_rga->src.format;
 		req->wr.format = req_rga->dst.format;
 	} else {
+		/*
+		 * ABC mode Layer binding:
+		 *     src => win1
+		 *     src1/dst => win0
+		 *     dst => wr
+		 */
+
 		if (req_rga->pat.yrgb_addr != 0) {
 			if (req_rga->src.yrgb_addr == req_rga->dst.yrgb_addr) {
 				/* Convert ABC mode to ABB mode. */
@@ -1607,11 +1616,11 @@ void rga_cmd_to_rga3_cmd(struct rga_req *req_rga, struct rga3_req *req)
 
 	/* color key: 8bit->10bit */
 	req->color_key_min = (req_rga->color_key_min & 0xff) << 22 |
-			     ((req_rga->color_key_min >> 8) & 0xff) << 12 |
-			     ((req_rga->color_key_min >> 16) & 0xff) << 2;
+			     ((req_rga->color_key_min >> 8) & 0xff) << 2 |
+			     ((req_rga->color_key_min >> 16) & 0xff) << 12;
 	req->color_key_max = (req_rga->color_key_max & 0xff) << 22 |
-			     ((req_rga->color_key_max >> 8) & 0xff) << 12 |
-			     ((req_rga->color_key_max >> 16) & 0xff) << 2;
+			     ((req_rga->color_key_max >> 8) & 0xff) << 2 |
+			     ((req_rga->color_key_max >> 16) & 0xff) << 12;
 
 	if (req_rga->mmu_info.mmu_en && (req_rga->mmu_info.mmu_flag & 1) == 1) {
 		req->mmu_info.src0_mmu_flag = 1;

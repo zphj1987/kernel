@@ -153,9 +153,6 @@
 /* KHZ */
 #define VOP2_MAX_DCLK_RATE		600000
 
-#define VOP2_COLOR_KEY_NONE		(0 << 31)
-#define VOP2_COLOR_KEY_MASK		(1 << 31)
-
 enum vop2_data_format {
 	VOP2_FMT_ARGB8888 = 0,
 	VOP2_FMT_RGB888,
@@ -3466,6 +3463,7 @@ static int vop2_extend_clk_init(struct vop2 *vop2)
 {
 	const char * const extend_clk_name[] = {
 		"hdmi0_phy_pll", "hdmi1_phy_pll"};
+	struct drm_device *drm_dev = vop2->drm_dev;
 	struct clk *clk;
 	struct vop2_extend_pll *extend_pll;
 	int i;
@@ -3476,14 +3474,14 @@ static int vop2_extend_clk_init(struct vop2 *vop2)
 		return 0;
 
 	for (i = 0; i < ARRAY_SIZE(extend_clk_name); i++) {
-		clk = devm_clk_get(vop2->dev, extend_clk_name[i]);
+		clk = devm_clk_get(drm_dev->dev, extend_clk_name[i]);
 		if (IS_ERR(clk)) {
-			dev_warn(vop2->dev, "failed to get %s: %ld\n",
+			dev_warn(drm_dev->dev, "failed to get %s: %ld\n",
 				 extend_clk_name[i], PTR_ERR(clk));
 			continue;
 		}
 
-		extend_pll = devm_kzalloc(vop2->dev, sizeof(*extend_pll), GFP_KERNEL);
+		extend_pll = devm_kzalloc(drm_dev->dev, sizeof(*extend_pll), GFP_KERNEL);
 		if (!extend_pll)
 			return -ENOMEM;
 
@@ -4179,7 +4177,7 @@ static void vop2_plane_setup_color_key(struct drm_plane *plane)
 	uint32_t g = 0;
 	uint32_t b = 0;
 
-	if (!(vpstate->color_key & VOP2_COLOR_KEY_MASK) || fb->format->is_yuv) {
+	if (!(vpstate->color_key & VOP_COLOR_KEY_MASK) || fb->format->is_yuv) {
 		VOP_WIN_SET(vop2, win, color_key_en, 0);
 		return;
 	}
@@ -4328,11 +4326,10 @@ static void vop2_win_atomic_update(struct vop2_win *win, struct drm_rect *src, s
 	 */
 	if (win->splice_mode_right) {
 		splice_pixel_offset = (src->x1 - left_src->x1) >> 16;
-		splice_yrgb_offset = splice_pixel_offset * fb->format->cpp[0];
-
+		splice_yrgb_offset = drm_format_info_min_pitch(fb->format, 0, splice_pixel_offset);
 		if (fb->format->is_yuv && fb->format->num_planes > 1) {
 			hsub = fb->format->hsub;
-			splice_uv_offset = splice_pixel_offset * fb->format->cpp[1] / hsub;
+			splice_uv_offset = drm_format_info_min_pitch(fb->format, 1, splice_pixel_offset / hsub);
 		}
 	}
 

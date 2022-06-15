@@ -12,6 +12,7 @@
 #include "rga_dma_buf.h"
 #include "rga_mm.h"
 #include "rga2_mmu_info.h"
+#include "rga_debugger.h"
 
 struct rga_job *
 rga_scheduler_get_pending_job_list(struct rga_scheduler_t *scheduler)
@@ -423,6 +424,9 @@ void rga_job_done(struct rga_scheduler_t *scheduler, int ret)
 	scheduler->timer.busy_time += ktime_us_delta(now, job->hw_recoder_time);
 
 	spin_unlock_irqrestore(&scheduler->irq_lock, flags);
+
+	if (DEBUGGER_EN(DUMP_IMAGE))
+		rga_dump_job_image(job);
 
 	rga_job_finish_and_next(scheduler, job, ret);
 }
