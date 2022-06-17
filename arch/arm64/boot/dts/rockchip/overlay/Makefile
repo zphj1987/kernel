@@ -1,11 +1,32 @@
 # SPDX-License-Identifier: GPL-2.0
 dtbo-$(CONFIG_ARCH_ROCKCHIP) += \
 	rock-5ab-camera-imx415.dtbo \
-	uart2-m0.dtbo \
-	uart3-m1.dtbo \
-	uart4-m2.dtbo \
-	uart7-m1.dtbo \
-	uart7-m2.dtbo
+	rk3588-i2c0-m1.dtbo \
+	rk3588-i2c1-m0.dtbo \
+	rk3588-i2c3-m1.dtbo \
+	rk3588-i2c7-m3.dtbo \
+	rk3588-i2c8-m4.dtbo \
+	rk3588-pwm2-m1.dtbo \
+	rk3588-pwm3-m1.dtbo \
+	rk3588-pwm5-m2.dtbo \
+	rk3588-pwm6-m2.dtbo \
+	rk3588-pwm7-m3.dtbo \
+	rk3588-pwm8-m0.dtbo \
+	rk3588-pwm12-m0.dtbo \
+	rk3588-pwm13-m0.dtbo \
+	rk3588-pwm13-m2.dtbo \
+	rk3588-pwm14-m0.dtbo \
+	rk3588-pwm14-m1.dtbo \
+	rk3588-pwm15-m0.dtbo \
+	rk3588-pwm15-m1.dtbo \
+	rk3588-pwm15-m3.dtbo \
+	rk3588-uart2-m0.dtbo \
+	rk3588-uart2-m2.dtbo \
+	rk3588-uart3-m1.dtbo \
+	rk3588-uart4-m2.dtbo \
+	rk3588-uart7-m1-ctsn-rtsn.dtbo \
+	rk3588-uart7-m1.dtbo \
+	rk3588-uart7-m2.dtbo
 
 scr-$(CONFIG_ARCH_ROCKCHIP) += \
 	rockchip-fixup.scr
