@@ -9,6 +9,7 @@
 #include <dt-bindings/pwm/pwm.h>
 #include "rk3399.dtsi"
 #include "rk3399-opp.dtsi"
+#include "rk3399-vop-clk-set.dtsi"
 
 / {
 	clkin_gmac: external-gmac-clock {
