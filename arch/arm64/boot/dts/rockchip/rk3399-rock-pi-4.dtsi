@@ -12,6 +12,31 @@
 #include "rk3399-vop-clk-set.dtsi"
 
 / {
+	reserved-memory {
+		#address-cells = <2>;
+		#size-cells = <2>;
+		ranges;
+
+		drm_logo: drm-logo@00000000 {
+			compatible = "rockchip,drm-logo";
+			reg = <0x0 0x0 0x0 0x0>;
+		};
+
+		ramoops_mem: region@110000 {
+			reg = <0x0 0x110000 0x0 0xf0000>;
+			reg-names = "ramoops_mem";
+		};
+	};
+
+	ramoops: ramoops {
+		compatible = "ramoops";
+		record-size = <0x0 0x40000>;
+		console-size = <0x0 0x80000>;
+		ftrace-size = <0x0 0x00000>;
+		pmsg-size = <0x0 0x00000>;
+		memory-region = <&ramoops_mem>;
+	};
+
 	clkin_gmac: external-gmac-clock {
 		compatible = "fixed-clock";
 		clock-frequency = <125000000>;
@@ -26,6 +51,21 @@
 		pinctrl-names = "default";
 		pinctrl-0 = <&wifi_enable_h>;
 		reset-gpios = <&gpio0 RK_PB2 GPIO_ACTIVE_LOW>;
+	};
+
+	hdmi_sound: hdmi-sound {
+		status = "disabled";
+		compatible = "simple-audio-card";
+		simple-audio-card,format = "i2s";
+		simple-audio-card,mclk-fs = <256>;
+		simple-audio-card,name = "rockchip,hdmi";
+
+		simple-audio-card,cpu {
+			sound-dai = <&i2s2>;
+		};
+		simple-audio-card,codec {
+			sound-dai = <&hdmi>;
+		};
 	};
 
 	es8316_sound: es8316-sound {
@@ -217,10 +257,16 @@
 };
 
 &hdmi {
-	ddc-i2c-bus = <&i2c3>;
 	pinctrl-names = "default";
-	pinctrl-0 = <&hdmi_cec>;
+	pinctrl-0 = <&hdmi_i2c_xfer>, <&hdmi_cec>;
+	#address-cells = <1>;
+	#size-cells = <0>;
+	#sound-dai-cells = <0>;
 	status = "okay";
+};
+
+&hdmi_in_vopl {
+	status = "disabled";
 };
 
 &hdmi_sound {
@@ -473,12 +519,6 @@
 		pinctrl-0 = <&i2s_8ch_mclk>;
 		#sound-dai-cells = <0>;
 	};
-};
-
-&i2c3 {
-	i2c-scl-rising-time-ns = <450>;
-	i2c-scl-falling-time-ns = <15>;
-	status = "okay";
 };
 
 &i2c4 {
@@ -771,6 +811,8 @@
 
 &vopb {
 	status = "okay";
+	assigned-clocks = <&cru DCLK_VOP0_DIV>;
+	assigned-clock-parents = <&cru PLL_CPLL>;
 };
 
 &vopb_mmu {
@@ -779,8 +821,28 @@
 
 &vopl {
 	status = "okay";
+	assigned-clocks = <&cru DCLK_VOP1_DIV>;
+	assigned-clock-parents = <&cru PLL_VPLL>;
 };
 
 &vopl_mmu {
 	status = "okay";
+};
+
+&display_subsystem {
+	status = "okay";
+
+	ports = <&vopb_out>, <&vopl_out>;
+	logo-memory-region = <&drm_logo>;
+
+	route {
+		route_hdmi: route-hdmi {
+			status = "okay";
+			logo,uboot = "logo.bmp";
+			logo,kernel = "logo_kernel.bmp";
+			logo,mode = "center";
+			charge_logo,mode = "center";
+			connect = <&vopb_out_hdmi>;
+		};
+	};
 };
