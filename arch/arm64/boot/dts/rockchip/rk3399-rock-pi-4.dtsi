@@ -27,10 +27,21 @@
 		reset-gpios = <&gpio0 RK_PB2 GPIO_ACTIVE_LOW>;
 	};
 
-	sound {
-		compatible = "audio-graph-card";
-		label = "rockchip,rk3399";
-		dais = <&i2s0_p0>;
+	es8316_sound: es8316-sound {
+		status = "okay";
+		compatible = "simple-audio-card";
+		simple-audio-card,format = "i2s";
+		simple-audio-card,mclk-fs = <256>;
+		simple-audio-card,name = "rockchip-es8316";
+		simple-audio-card,dai-link@0 {
+			format = "i2s";
+			cpu {
+				sound-dai = <&i2s0>;
+			};
+			codec {
+				sound-dai = <&es8316>;
+			};
+		};
 	};
 
 	vcc12v_dcin: dc-12v {
@@ -458,12 +469,6 @@
 		pinctrl-names = "default";
 		pinctrl-0 = <&i2s_8ch_mclk>;
 		#sound-dai-cells = <0>;
-
-		port {
-			es8316_p0_0: endpoint {
-				remote-endpoint = <&i2s0_p0_0>;
-			};
-		};
 	};
 };
 
@@ -480,17 +485,10 @@
 };
 
 &i2s0 {
-	rockchip,playback-channels = <8>;
-	rockchip,capture-channels = <8>;
+	rockchip,playback-channels = <2>;
+	rockchip,capture-channels = <2>;
+	#sound-dai-cells = <0>;
 	status = "okay";
-
-	i2s0_p0: port {
-		i2s0_p0_0: endpoint {
-			dai-format = "i2s";
-			mclk-fs = <256>;
-			remote-endpoint = <&es8316_p0_0>;
-		};
-	};
 };
 
 &i2s1 {
