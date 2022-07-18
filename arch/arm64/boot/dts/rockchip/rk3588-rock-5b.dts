@@ -25,6 +25,12 @@
 	model = "Radxa ROCK 5B";
 	compatible = "radxa,rock-5b", "rockchip,rk3588";
 
+	aliases {
+		mmc0 = &sdmmc;
+		mmc1 = &sdhci;
+		mmc2 = &sdio;
+	};
+
 	/delete-node/ chosen;
 
 	vcc12v_dcin: vcc12v-dcin {
