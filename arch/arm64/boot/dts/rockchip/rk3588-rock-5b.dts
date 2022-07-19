@@ -466,7 +466,7 @@
 			logo,kernel = "logo_kernel.bmp";
 			logo,mode = "center";
 			charge_logo,mode = "center";
-			connect = <&vp2_out_hdmi1>;
+			connect = <&vp1_out_hdmi1>;
 		};
 	};
 };
@@ -480,7 +480,7 @@
 };
 
 &hdmi0_in_vp1 {
-	status = "okay";
+	status = "disabled";
 };
 
 &hdmi0_in_vp2 {
@@ -502,11 +502,11 @@
 };
 
 &hdmi1_in_vp1 {
-	status = "disabled";
+	status = "okay";
 };
 
 &hdmi1_in_vp2 {
-	status = "okay";
+	status = "disabled";
 };
 
 &hdmi1_sound {
@@ -547,8 +547,6 @@
 
 &vop {
 	status = "okay";
-	assigned-clocks = <&cru ACLK_VOP>;
-	assigned-clock-rates = <800000000>;
 };
 
 &vop_mmu {
@@ -777,15 +775,15 @@
 };
 
 &dp0 {
-	status = "disabled";
+	status = "okay";
 };
 
 &dp0_in_vp2 {
-	status = "disabled";
+	status = "okay";
 };
 
 &route_dp0 {
-	status = "disabled";
+	status = "okay";
 	connect = <&vp2_out_dp0>;
 };
 
