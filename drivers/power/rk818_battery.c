@@ -1570,6 +1570,8 @@ static void rk818_bat_calc_zero_linek(struct rk818_battery *di)
 	int i, cnt, vol_old, vol_now;
 	int org_linek = 0, min_gap_xsoc;
 
+	cnt = 0;
+
 	if ((abs(di->current_avg) < 500) && (di->dsoc > 10))
 		pwroff_vol = di->pdata->pwroff_vol + 50;
 	else
