@@ -22,6 +22,7 @@ dtbo-$(CONFIG_ARCH_ROCKCHIP) += \
 	rk3588-pwm15-m0.dtbo \
 	rk3588-pwm15-m1.dtbo \
 	rk3588-pwm15-m3.dtbo \
+	rock-5b-sata.dtbo \
 	rk3588-spi0-m2-cs0-spidev.dtbo \
 	rk3588-spi0-m2-cs1-spidev.dtbo \
 	rk3588-spi1-m1-cs0-spidev.dtbo \
