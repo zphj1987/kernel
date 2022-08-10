@@ -17,6 +17,7 @@
 #include <linux/of_graph.h>
 #include <linux/slab.h>
 #include <linux/videodev2.h>
+#include <linux/gpio/consumer.h>
 #include <linux/version.h>
 #include <linux/rk-camera-module.h>
 #include <media/v4l2-ctrls.h>
@@ -222,6 +223,7 @@ struct imx219 {
 	struct media_pad pad;
 	struct v4l2_ctrl_handler ctrl_handler;
 	struct clk *clk;
+	struct gpio_desc *pwdn_gpio;
 	struct v4l2_rect crop_rect;
 	int hflip;
 	int vflip;
@@ -429,7 +431,16 @@ static int imx219_s_power(struct v4l2_subdev *sd, int on)
 	if (on)	{
 		dev_dbg(&client->dev, "imx219 power on\n");
 		clk_prepare_enable(priv->clk);
+
+		if(!IS_ERR(priv->pwdn_gpio)) {
+			gpiod_set_value_cansleep(priv->pwdn_gpio, 1);
+			msleep(10);
+		}
 	} else if (!on) {
+		if(!IS_ERR(priv->pwdn_gpio)) {
+			gpiod_set_value_cansleep(priv->pwdn_gpio, 0);
+		}
+
 		dev_dbg(&client->dev, "imx219 power off\n");
 		clk_disable_unprepare(priv->clk);
 	}
@@ -1047,6 +1058,11 @@ static int imx219_probe(struct i2c_client *client,
 		return -EPROBE_DEFER;
 	}
 
+	priv->pwdn_gpio = devm_gpiod_get(&client->dev, "pwdn", GPIOD_OUT_HIGH);
+	if (IS_ERR(priv->pwdn_gpio))
+		dev_info(&client->dev, "Failed to get pwdn-gpios\n");
+
+	msleep(5);
 	/* 1920 * 1080 by default */
 	priv->cur_mode = &supported_modes[0];
 	priv->cfg_num = ARRAY_SIZE(supported_modes);
@@ -1059,17 +1075,17 @@ static int imx219_probe(struct i2c_client *client,
 	v4l2_i2c_subdev_init(&priv->subdev, client, &imx219_subdev_ops);
 	ret = imx219_ctrls_init(&priv->subdev);
 	if (ret < 0)
-		return ret;
+		goto err_power_off;
 	ret = imx219_video_probe(client);
 	if (ret < 0)
-		return ret;
+		goto err_power_off;
 
 	priv->subdev.flags |= V4L2_SUBDEV_FL_HAS_DEVNODE;
 	priv->pad.flags = MEDIA_PAD_FL_SOURCE;
 	priv->subdev.entity.type = MEDIA_ENT_T_V4L2_SUBDEV_SENSOR;
 	ret = media_entity_init(&priv->subdev.entity, 1, &priv->pad, 0);
 	if (ret < 0)
-		return ret;
+		goto err_power_off;
 
 	sd = &priv->subdev;
 	memset(facing, 0, sizeof(facing));
@@ -1083,7 +1099,13 @@ static int imx219_probe(struct i2c_client *client,
 		 IMX219_NAME, dev_name(sd->dev));
 	ret = v4l2_async_register_subdev_sensor_common(sd);
 	if (ret < 0)
-		return ret;
+		goto err_power_off;
+
+	return ret;
+
+err_power_off:
+	if (!IS_ERR(priv->pwdn_gpio))
+		gpiod_set_value_cansleep(priv->pwdn_gpio, 0);
 
 	return ret;
 }
