@@ -1,0 +1,14 @@
+// RK3399 OTG port in otg mode.
+/dts-v1/;
+/plugin/;
+
+/ {
+	compatible = "rockchip,rk3399";
+
+	fragment@0 {
+		target = <&usbdrd_dwc3_0>;
+		__overlay__ {
+			dr_mode = "host";
+		};
+	};
+};
