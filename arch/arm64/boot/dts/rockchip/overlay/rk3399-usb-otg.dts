@@ -8,7 +8,7 @@
 	fragment@0 {
 		target = <&usbdrd_dwc3_0>;
 		__overlay__ {
-			dr_mode = "host";
+			dr_mode = "otg";
 		};
 	};
 };
