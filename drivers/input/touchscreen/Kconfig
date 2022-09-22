@@ -1178,5 +1178,11 @@ config TOUCHSCREEN_FTS
 	  Say Y here if you have Focaltech touch panel.
 	  If unsure, say N.
 
+config TOUCHSCREEN_ROCKPI_FT5406
+	tristate "rockpi ft5406"
+	default y
+	depends on I2C
+	help
+	  Control ft5406 touch ic.
 
 endif
