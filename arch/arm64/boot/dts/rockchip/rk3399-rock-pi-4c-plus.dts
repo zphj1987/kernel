@@ -669,7 +669,7 @@
 };
 
 &spi1 {
-	status = "okay";
+	status = "disabled";
 	max-freq = <10000000>;
 	#address-cells = <1>;
 	#size-cells = <0>;
@@ -680,7 +680,7 @@
 		compatible = "jedec,spi-nor";
 		reg = <0x0>;
 		spi-max-frequency = <10000000>;
-		status = "okay";
+		status = "disabled";
 
 		partitions {
 			compatible = "fixed-partitions";
