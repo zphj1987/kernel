@@ -215,6 +215,12 @@ static ssize_t rockpi_mcu_brightness_store(struct class *cls,
 
 static CLASS_ATTR(brightness, 0644, rockpi_mcu_brightness_show, rockpi_mcu_brightness_store);
 
+int rockpi_mcu_is_connected(void)
+{
+	return connected;
+}
+EXPORT_SYMBOL_GPL(rockpi_mcu_is_connected);
+
 static ssize_t rockpi_mcu_connection_show(struct class *cls,
 			struct class_attribute *attr,
 			char *buf)
