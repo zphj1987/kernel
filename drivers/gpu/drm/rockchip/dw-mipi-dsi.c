@@ -219,6 +219,11 @@
 #define FEEDBACK_DIV_DEF_VAL_BYPASS	BIT(5)
 #define INPUT_DIV_DEF_VAL_BYPASS	BIT(4)
 
+#define POWER_CONTROL		BIT(6)
+#define INTERNAL_REG_CURRENT	BIT(3)
+#define BIAS_BLOCK_ON		BIT(2)
+#define BANDGAP_ON		BIT(0)
+
 enum soc_type {
 	PX30,
 	RK1808,
@@ -699,6 +704,10 @@ static void dw_mipi_dsi_phy_init(struct dw_mipi_dsi *dsi)
 
 	if (IS_DSI0(dsi))
 		dw_mipi_dsi_phy_pll_init(dsi);
+
+	regmap_write(dphy->regmap, 0x20,
+			POWER_CONTROL | INTERNAL_REG_CURRENT |
+			BIAS_BLOCK_ON | BANDGAP_ON);
 }
 
 static unsigned long dw_mipi_dsi_get_lane_rate(struct dw_mipi_dsi *dsi)
