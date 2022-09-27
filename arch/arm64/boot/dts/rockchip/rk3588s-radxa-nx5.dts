@@ -10,8 +10,8 @@
 #include "rk3588s-radxa-nx5-module.dtsi"
 
 / {
-    model = "Radxa NX5";
-    compatible = "radxa,nx5", "rockchip,rk3588";
+	model = "Radxa NX5";
+	compatible = "radxa,nx5", "rockchip,rk3588";
 };
 
 &combphy0_ps {
@@ -29,5 +29,67 @@
 
 &pcie2x1l1 {
 	reset-gpios = <&gpio3 RK_PC6 GPIO_ACTIVE_HIGH>;
+	status = "okay";
+};
+
+&usb_host1_ehci {
+	status = "okay";
+};
+
+&usb_host1_ohci {
+	status = "okay";
+};
+
+&u2phy3 {
+	status = "okay";
+};
+
+&u2phy3_host {
+	status = "okay";
+};
+
+&usb_host0_ehci {
+	status = "okay";
+};
+
+&usb_host0_ohci {
+	status = "okay";
+};
+
+&u2phy2 {
+	status = "okay";
+};
+
+&u2phy2_host {
+	status = "okay";
+};
+
+&u2phy0 {
+	status = "okay";
+};
+
+&u2phy0_otg {
+	status = "okay";
+};
+
+&usbdrd3_0 {
+	status = "okay";
+};
+
+&usbdrd_dwc3_0 {
+	status = "okay";
+	dr_mode = "host";
+};
+
+&usbdp_phy0 {
+	status = "okay";
+	rockchip,dp-lane-mux = < 0 1 >;
+};
+
+&usbdp_phy0_dp {
+	status = "okay";
+};
+
+&usbdp_phy0_u3 {
 	status = "okay";
 };
