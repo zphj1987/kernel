@@ -11,6 +11,7 @@
 #include "rk3399-opp.dtsi"
 #include <dt-bindings/display/media-bus-format.h>
 #include <dt-bindings/gpio/gpio.h>
+#include "rock-pi-4c-plus-radxa-8inch-display.dtsi"
 #include "rock-pi-4c-plus-radxa-10p1inch-display.dtsi"
 
 / {
