@@ -2,8 +2,8 @@
 /plugin/;
 
 / {
-	model = "Radxa ROCK Pi 4C+";
-	compatible = "radxa,rockpi4c-plus","rockchip,rk3399";
+	model = "Radxa ROCK 4C+";
+	compatible = "radxa,rock-4c-plus", "rockchip,rk3399";
 
 	fragment@0 {
 		target = <&backlight>;
@@ -26,7 +26,7 @@
 
 		__overlay__ {
 			status = "okay";
-			dsi_panel: dsi-panel@0 {
+			dsi_panel_1: dsi-panel-1@0 {
 				status = "okay";
 			};
 		};
@@ -57,14 +57,6 @@
 	};
 
 	fragment@6 {
-		target = <&i2c1>;
-
-		__overlay__ {
-			status = "okay";
-		};
-	};
-
-	fragment@7 {
 		target = <&cdn_dp>;
 
 		__overlay__ {
@@ -72,7 +64,7 @@
 		};
 	};
 
-	fragment@8 {
+	fragment@7 {
 		target = <&tcphy0>;
 
 		__overlay__ {
@@ -80,7 +72,7 @@
 		};
 	};
 
-	fragment@9 {
+	fragment@8 {
 		target = <&dp_in_vopl>;
 
 		__overlay__ {
@@ -88,7 +80,7 @@
 		};
 	};
 
-	fragment@10 {
+	fragment@9 {
 		target = <&tcphy0_dp>;
 
 		__overlay__ {
@@ -96,18 +88,11 @@
 		};
 	};
 
-	fragment@11 {
+	fragment@10 {
 		target = <&tcphy0_usb3>;
 
 		__overlay__ {
 			status = "disabled";
-		};
-	};
-
-	fragment@12 {
-		target = <&focaltech>;
-		__overlay__ {
-			status = "okay";
 		};
 	};
 };
