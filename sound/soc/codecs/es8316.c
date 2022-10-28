@@ -701,6 +701,7 @@ static int es8316_pcm_startup(struct snd_pcm_substream *substream,
 				    ES8316_CLKMGR_DAC_ANALOG_EN);
 		msleep(50);
 	} else {
+		snd_soc_write(codec, ES8316_ADC_PDN_LINSEL_REG22, 0x30);
 		snd_soc_update_bits(codec,
 				    ES8316_ADC_PDN_LINSEL_REG22, 0xC0, 0x20);
 		snd_soc_update_bits(codec, ES8316_CLKMGR_CLKSW_REG01,
@@ -938,7 +939,7 @@ static int es8316_init_regs(struct snd_soc_codec *codec)
 	snd_soc_write(codec, ES8316_SYS_PDN_REG0D, 0x00);
 	snd_soc_write(codec, ES8316_RESET_REG00, 0xC0);
 	msleep(50);
-	snd_soc_write(codec, ES8316_ADC_PGAGAIN_REG23, 0x60);
+	snd_soc_write(codec, ES8316_ADC_PGAGAIN_REG23, 0xA0);
 	snd_soc_write(codec, ES8316_ADC_D2SEPGA_REG24, 0x01);
 	/* adc ds mode, HPF enable */
 	snd_soc_write(codec, ES8316_ADC_DMIC_REG25, 0x08);
