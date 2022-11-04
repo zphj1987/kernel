@@ -8,6 +8,7 @@ dtbo-$(CONFIG_ARCH_ROCKCHIP) += \
 	devspi2.dtbo \
 	imx219.dtbo \
 	pcie-gen2.dtbo \
+	raspberrypi-7-inch-lcd.dtbo \
 	rk3399-usb-host.dtbo \
 	rk3399-usb-otg.dtbo \
 	rock-4c-plus-raspberrypi-7inch-touchscreen.dtbo \
