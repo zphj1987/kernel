@@ -1,5 +1,6 @@
 /*
  * Copyright (C) 2013, NVIDIA Corporation.  All rights reserved.
+ * Copyright (c) 2022 Radxa Computer Co., Ltd.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a
  * copy of this software and associated documentation files (the "Software"),
@@ -264,6 +265,7 @@ static int tc358762_dsi_init(struct tc358762 *p)
 	tc358762_gen_write_seq(dsi, 0x64, 0x04, 0x0f, 0x04, 0x00, 0x00);//SYSCTRL
 	tc358762_gen_write_seq(dsi, 0x04, 0x01, 0x01, 0x00, 0x00, 0x00);//STARTPPI
 	tc358762_gen_write_seq(dsi, 0x04, 0x02, 0x01, 0x00, 0x00, 0x00);//STARTDSI
+	tc358762_gen_write_seq(dsi, 0x10, 0x04, 0x03, 0x00, 0x00, 0x00);//Read Size Register: RDPKTLN[2;0]
 
 	usleep_range(10, 20);
 	return 0;
@@ -307,7 +309,6 @@ static int tc358762_enable(struct drm_panel *panel)
 	if(trigger_bridge) {
 		pr_info("rockpi_mcu_screen_power_up");
 		rockpi_mcu_screen_power_up();
-		trigger_bridge = 0;
 	}
 
 	tc358762_dsi_init(p);
@@ -331,16 +332,6 @@ static int tc358762_get_modes(struct drm_panel *panel)
 {
 	struct tc358762 *p = to_tc358762(panel);
 	int num = 0;
-
-	/* probe EDID if a DDC bus is available */
-	if (p->ddc) {
-		struct edid *edid = drm_get_edid(panel->connector, p->ddc);
-		drm_mode_connector_update_edid_property(panel->connector, edid);
-		if (edid) {
-			num += drm_add_edid_modes(panel->connector, edid);
-			kfree(edid);
-		}
-	}
 
 	/* add hard-coded panel modes */
 	num += tc358762_get_fixed_modes(p);
@@ -485,18 +476,17 @@ struct bridge_desc {
 };
 
 static const struct drm_display_mode tc358762_mode = {
-	.clock = 26700,
+	.clock = 26101800 / 1000,
 	.hdisplay = 800,
-	.hsync_start = 800 + 16,
-	.hsync_end = 800 + 16 + 4,
-	.htotal = 800 + 16 + 4 + 26,
+	.hsync_start = 800 + 1,
+	.hsync_end = 800 + 1 + 2,
+	.htotal = 800 + 1 + 2 + 52,
 	.vdisplay = 480,
 	.vsync_start = 480 + 7,
 	.vsync_end = 480 + 7 + 2,
 	.vtotal = 480 + 7 + 2 + 21,
 	.vrefresh = 60,
 	.flags = DRM_MODE_FLAG_NVSYNC | DRM_MODE_FLAG_NHSYNC,
-
 };
 
 static const struct bridge_desc tc358762_bridge = {
@@ -510,8 +500,7 @@ static const struct bridge_desc tc358762_bridge = {
 		},
 	},
 	.flags = MIPI_DSI_MODE_VIDEO |
-		 MIPI_DSI_MODE_VIDEO_BURST |
-		 MIPI_DSI_MODE_VIDEO_SYNC_PULSE,
+		 MIPI_DSI_MODE_VIDEO_BURST | MIPI_DSI_MODE_LPM,
 	.format = MIPI_DSI_FMT_RGB888,
 	.lanes = 1,
 };
@@ -615,6 +604,7 @@ static void __exit tc358762_exit(void)
 }
 module_exit(tc358762_exit);
 
+MODULE_AUTHOR("Radxa <dev@radxa.com>");
 MODULE_AUTHOR("Jerry <xbl@rock-chips.com>");
 MODULE_DESCRIPTION("DRM Driver for toshiba tc358762 Bridge");
 MODULE_LICENSE("GPL and additional rights");
