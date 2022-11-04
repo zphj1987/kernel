@@ -10,6 +10,7 @@ dtbo-$(CONFIG_ARCH_ROCKCHIP) += \
 	pcie-gen2.dtbo \
 	rk3399-usb-host.dtbo \
 	rk3399-usb-otg.dtbo \
+	rock-4c-plus-raspberrypi-7inch-touchscreen.dtbo \
 	rock-4c-plus-radxa-display-8hd.dtbo \
 	rock-4c-plus-radxa-display-10hd.dtbo \
 	spi1-waveshare35c.dtbo \

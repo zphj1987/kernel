@@ -12,8 +12,7 @@
 #include "rk3399.dtsi"
 #include "rk3399-linux.dtsi"
 #include "rk3399-opp.dtsi"
-#include "rk3399-rock-4c-plus-radxa-display-8hd.dtsi"
-#include "rk3399-rock-4c-plus-radxa-display-10hd.dtsi"
+#include "rk3399-rock-4c-plus-display.dtsi"
 
 / {
 	model = "Radxa ROCK 4C+";
@@ -867,22 +866,6 @@
 	connect = <&vopb_out_hdmi>;
 };
 
-&backlight {
-	status = "disabled";
-};
-
-&pwm2 {
-	status = "disabled";
-};
-
-&dsi{
-	status = "disabled";
-};
-
-&dsi_panel {
-	status = "disabled";
-};
-
 &vopb_out_dsi {
 	status = "disabled";
 };
@@ -1207,5 +1190,4 @@
 				<3 RK_PD1 RK_FUNC_GPIO &pcfg_pull_none>;
 		};
 	};
-
 };
